@@ -1,0 +1,13 @@
+# Lint e Type Check
+npm_config_yes=true
+*.log
+node_modules/
+dist/
+build/
+.env*
+!.env.example
+.DS_Store
+coverage/
+.nyc_output/
+.vscode/settings.json
+.idea/
