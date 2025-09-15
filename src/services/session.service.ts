@@ -33,13 +33,26 @@ export class SessionService {
                 }
             }
 
-            // 2. Se não tem assistant_id ou não encontrou sessão, cria nova
+            // 2. Se não tem assistant_id, verifica se existe alguma sessão ativa do usuário
+            if (!assistant_id) {
+                const existingUserSession = await chatRepository.findActiveByUserId(userId);
+                if (existingUserSession) {
+                    logger.info(`[SessionService] Using existing user session: ${existingUserSession.id}`);
+                    return {
+                        session: existingUserSession,
+                        assistantId: existingUserSession.assistant_id,
+                        isNewSession: false
+                    };
+                }
+            }
+
+            // 3. Se não encontrou nenhuma sessão, cria nova
             logger.info(`[SessionService] Creating new session for user: ${userId}`);
 
-            // 3. Inativa sessões antigas do usuário (como no n8n)
+            // 4. Inativa sessões antigas do usuário (como no n8n)
             await this.inactivateOldSessions(userId);
 
-            // 4. Cria nova sessão
+            // 5. Cria nova sessão
             const newAssistantId = assistant_id || uuidv4();
             const newSession = await chatRepository.createChat({
                 user_id: userId,

@@ -14,8 +14,8 @@ export const AssistantQuerySchema = z.object({
     }),
     assistant_id: z.string().optional(),
     session_id: z.string().optional(),
-    prefecture_user_token: z.string(),
-    user_token: z.string(),
+    prefecture_user_token: z.string().optional(),
+    user_token: z.string().optional(),
     new_chat: z.boolean().optional(),
 });
 

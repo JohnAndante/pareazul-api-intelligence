@@ -30,7 +30,6 @@ async function startServer() {
             logger.info(`🚀 Pareazul Assistant Server is running at http://localhost:${PORT}`);
             logger.info(`📊 Health check available at http://localhost:${PORT}/health`);
             logger.info(`🤖 Chat API available at http://localhost:${PORT}/api/chat`);
-            logger.info(`🧮 Calculator API available at http://localhost:${PORT}/api/calculator`);
         });
     } catch (error) {
         logger.error('Failed to start server:', error);

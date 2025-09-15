@@ -26,10 +26,9 @@ export async function processAssistantMessage(
             message,
             payload,
             assistant_id: assistantId,
-            prefecture_user_token: '', // Será preenchido pelo webhook
         });
 
-        // Processa a sessão seguindo lógica do n8n
+        // Processa a sessão, criando uma nova sessão se não existir
         const sessionResult = await sessionService.createSession({
             payload: validatedInput.payload,
             assistant_id: validatedInput.assistant_id,
@@ -41,12 +40,12 @@ export async function processAssistantMessage(
 
         const { session, assistantId: finalAssistantId, isNewSession } = sessionResult;
 
-        // Cria contexto para o agente
+        // Cria contexto para o agente, passando o payload e o token do usuário
         const context: AgentContext = {
             sessionId: session.id,
             userId: validatedInput.payload.usuario_id,
             prefectureId: validatedInput.payload.prefeitura_id,
-            prefectureUserToken: validatedInput.prefecture_user_token,
+            prefectureUserToken: validatedInput.prefecture_user_token || '',
             payload: validatedInput.payload,
             metadata: {
                 isNewSession,
@@ -54,7 +53,7 @@ export async function processAssistantMessage(
             },
         };
 
-        // Registra mensagem do usuário
+        // Registra mensagem do usuário, salvando na memória
         const userMessage = await memoryService.addMessage(
             session.id,
             'user',
@@ -65,10 +64,10 @@ export async function processAssistantMessage(
             throw new Error('Failed to save user message');
         }
 
-        // Invoca o agente
+        // Invoca o agente, passando a mensagem e o contexto
         const agentResponse = await invokeAssistantAgent(message, context);
 
-        // Registra resposta do agente
+        // Registra resposta do agente, salvando na memória
         const assistantMessage = await memoryService.addMessage(
             session.id,
             'assistant',
@@ -79,13 +78,13 @@ export async function processAssistantMessage(
             logger.warn('Failed to save assistant message, but continuing');
         }
 
-        // Atualiza cache da sessão
+        // Atualiza cache da sessão, salvando na memória
         await memoryService.setSessionCache(validatedInput.payload.usuario_id, {
             assistant_id: finalAssistantId,
             assistant_chat_id: session.id,
             payload: validatedInput.payload,
             prefecture_user_token: validatedInput.prefecture_user_token || '',
-            user_token: '',
+            user_token: validatedInput.user_token || '',
         });
 
         logger.info(`[AssistantAgent] Message processed successfully`);
@@ -99,7 +98,7 @@ export async function processAssistantMessage(
     } catch (error) {
         logger.error('[AssistantAgent] Error processing message:', error);
 
-        // Retorna resposta de erro
+        // Retorna resposta de erro, caso ocorra algum erro
         return {
             message: "Desculpe, houve um erro interno e não consegui completar sua solicitação. Por favor, tente novamente.",
             message_date: new Date().toISOString(),
@@ -123,10 +122,10 @@ export async function processWebhookRequest(request: {
     message_id?: string;
 }> {
     try {
-        // Valida entrada do webhook
+        // Valida entrada do webhook, garantindo que o payload é válido
         const validatedRequest = WebhookRequestSchema.parse(request);
 
-        // Processa a mensagem
+        // Processa a mensagem, criando uma nova sessão se não existir
         return await processAssistantMessage(
             validatedRequest.message,
             validatedRequest.payload,
@@ -144,6 +143,5 @@ export async function processWebhookRequest(request: {
 }
 
 // Re-exports
-export { invokeAssistantAgent } from "./agent";
 export { databaseTools } from "../../tools/database.tool";
 export * from "./schemas";

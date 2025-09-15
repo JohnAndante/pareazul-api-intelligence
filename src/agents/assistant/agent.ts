@@ -9,7 +9,8 @@ import { logger } from "../../utils/logger.util";
 // Configuração do LLM
 const llm = new ChatOpenAI({
     modelName: "gpt-4o-mini",
-    temperature: 0.1,
+    temperature: 0.3,
+    topP: 0.9,
     openAIApiKey: process.env.OPENAI_API_KEY,
 });
 
@@ -17,6 +18,7 @@ const llm = new ChatOpenAI({
 const createDynamicPrompt = (payload: any) => {
     const currentDate = new Date().toISOString();
     const systemPrompt = createPromptTemplate(payload, currentDate);
+    logger.info(`[AssistantAgent] System prompt:`, systemPrompt);
 
     // Processa o prompt completamente antes de usar no LangChain
     return ChatPromptTemplate.fromMessages([
@@ -42,9 +44,11 @@ export const createAssistantAgent = async (payload: any) => {
         return new AgentExecutor({
             agent,
             tools,
-            verbose: process.env.NODE_ENV === 'development',
-            maxIterations: 25,
-            returnIntermediateSteps: false,
+            // verbose: process.env.NODE_ENV === 'development',
+            // returnIntermediateSteps: process.env.NODE_ENV === 'development',
+            maxIterations: 12,
+            earlyStoppingMethod: 'generate',
+            handleParsingErrors: true,
         });
     } catch (error) {
         logger.error('Error creating assistant agent:', error);
