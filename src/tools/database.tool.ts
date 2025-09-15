@@ -1,16 +1,32 @@
-import { DynamicTool } from 'langchain/tools';
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { z } from 'zod';
 import { memoryService } from '../services/memory.service';
 import { chatRepository } from '../repositories/chat.repository';
 import { messageRepository } from '../repositories/message.repository';
 import { logger } from '../utils/logger.util';
 
+// Schemas para as tools
+const GetUserInfoSchema = z.object({
+    userId: z.string().describe('ID do usuário')
+});
+
+const GetMessageHistorySchema = z.object({
+    sessionId: z.string().describe('ID da sessão'),
+    limit: z.number().optional().describe('Número máximo de mensagens a retornar (padrão: 20)')
+});
+
+const GetSessionStatusSchema = z.object({
+    sessionId: z.string().describe('ID da sessão')
+});
+
 // Tool para buscar informações do usuário
-const getUserInfoTool = new DynamicTool({
+const getUserInfoTool = new DynamicStructuredTool({
     name: 'get_user_info',
-    description: 'Busca informações básicas do usuário atual. Input: userId (string)',
-    func: async (input: string) => {
-        const { userId } = JSON.parse(input);
+    description: 'Busca informações básicas do usuário atual',
+    schema: GetUserInfoSchema,
+    func: async (input: { userId: string }) => {
         try {
+            const { userId } = input;
             const sessionCache = await memoryService.getSessionCache(userId);
             if (!sessionCache) {
                 return 'Usuário não encontrado ou sessão expirada';
@@ -36,12 +52,13 @@ const getUserInfoTool = new DynamicTool({
 });
 
 // Tool para buscar histórico de mensagens
-const getMessageHistoryTool = new DynamicTool({
+const getMessageHistoryTool = new DynamicStructuredTool({
     name: 'get_message_history',
-    description: 'Busca o histórico de mensagens da conversa atual. Input: {sessionId: string, limit?: number}',
-    func: async (input: string) => {
-        const { sessionId, limit = 20 } = JSON.parse(input);
+    description: 'Busca o histórico de mensagens da conversa atual',
+    schema: GetMessageHistorySchema,
+    func: async (input: { sessionId: string; limit?: number }) => {
         try {
+            const { sessionId, limit = 20 } = input;
             const messages = await messageRepository.getRecentMessages(sessionId, limit);
 
             const formattedMessages = messages.map(msg => ({
@@ -59,12 +76,13 @@ const getMessageHistoryTool = new DynamicTool({
 });
 
 // Tool para verificar status da sessão
-const getSessionStatusTool = new DynamicTool({
+const getSessionStatusTool = new DynamicStructuredTool({
     name: 'get_session_status',
-    description: 'Verifica o status atual da sessão. Input: {sessionId: string}',
-    func: async (input: string) => {
-        const { sessionId } = JSON.parse(input);
+    description: 'Verifica o status atual da sessão',
+    schema: GetSessionStatusSchema,
+    func: async (input: { sessionId: string }) => {
         try {
+            const { sessionId } = input;
             const session = await chatRepository.findById(sessionId);
             if (!session) {
                 return 'Sessão não encontrada';

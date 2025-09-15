@@ -239,9 +239,7 @@ date-related operations or calculations.
 
 - All available data is provided in the payload of the request.
 
-\`\`\`json
 {userPayload}
-\`\`\`
 
 ---
 
@@ -287,25 +285,31 @@ date-related operations or calculations.
 
 ---
 
-## Message output
-
-Your message output must be a JSON object with the following structure:
-
-\`\`\`json
-{
-    "message": "Your message here",
-}
-\`\`\`
-
----
-
 ## Agent scratchpad
 
 {agent_scratchpad}`;
 
+// Função para converter payload para Markdown
+const payloadToMarkdown = (payload: any): string => {
+  const lines: string[] = [];
+
+  for (const [key, value] of Object.entries(payload)) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      lines.push(`- **${key}**: ${value}`);
+    } else if (typeof value === 'object' && value !== null) {
+      lines.push(`- **${key}**:`);
+      for (const [subKey, subValue] of Object.entries(value)) {
+        lines.push(`  - ${subKey}: ${subValue}`);
+      }
+    }
+  }
+
+  return lines.join('\n');
+};
+
 export const createPromptTemplate = (payload: any, currentDate: string = new Date().toISOString()) => {
-  // Processa completamente o prompt, substituindo todas as variáveis
-  const userPayload = JSON.stringify(payload, null, 2);
+  // Converte payload para Markdown para evitar conflitos com variáveis de template
+  const userPayload = payloadToMarkdown(payload);
 
   return SYSTEM_PROMPT
     .replace('{currentDate}', currentDate)
