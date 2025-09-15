@@ -5,6 +5,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
   PORT: z.string().transform(Number).default(3000),
 
+  // Pareazul API
+  PAREAZUL_API_WEBSERVICE: z.string().url(),
+  PAREAZUL_API_BACKEND: z.string().url(),
+
   // Database
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string(),

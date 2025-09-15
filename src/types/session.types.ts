@@ -1,3 +1,15 @@
+export interface UserPayload {
+    prefeitura_id: string;
+    prefeitura_nome: string;
+    prefeitura_sigla: string;
+    prefeitura_timezone: string;
+    usuario_id: string;
+    usuario_nome: string;
+    usuario_email: string;
+    usuario_cpf: string;
+}
+
+
 export interface SessionMeta {
     assistant_id: string;
     assistant_chat_id: string;

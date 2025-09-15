@@ -1,9 +1,9 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { AgentExecutor, createOpenAIToolsAgent } from "langchain/agents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { databaseTools } from "../../tools/database.tool";
-import { createPromptTemplate } from "./assistant.prompt";
-import { AgentContext } from "./assistant.schemas";
+import { createAllTools } from "../../tools";
+import { createPromptTemplate } from "./prompt";
+import { AgentContext } from "./schemas";
 import { logger } from "../../utils/logger.util";
 
 // Configuração do LLM
@@ -31,17 +31,19 @@ export const createAssistantAgent = async (payload: any) => {
     try {
         const promptTemplate = createDynamicPrompt(payload);
 
+        const tools = createAllTools();
+
         const agent = await createOpenAIToolsAgent({
             llm,
-            tools: databaseTools,
+            tools,
             prompt: promptTemplate,
         });
 
         return new AgentExecutor({
             agent,
-            tools: databaseTools,
+            tools,
             verbose: process.env.NODE_ENV === 'development',
-            maxIterations: 5,
+            maxIterations: 25,
             returnIntermediateSteps: false,
         });
     } catch (error) {

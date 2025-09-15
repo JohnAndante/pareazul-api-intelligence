@@ -1,8 +1,8 @@
-import { invokeAssistantAgent } from "./assistant.agent";
-import { AssistantQuerySchema, WebhookRequestSchema, AgentContext } from "./assistant.schemas";
-import { sessionService } from "../../services/session.service";
+import { invokeAssistantAgent } from "./agent";
+import { AssistantQuerySchema, WebhookRequestSchema, AgentContext } from "./schemas";
 import { memoryService } from "../../services/memory.service";
 import { logger } from "../../utils/logger.util";
+import { uuidv4 } from "zod";
 
 /**
  * Função principal que processa uma mensagem de chat
@@ -25,10 +25,16 @@ export async function processAssistantMessage(
             message,
             payload,
             assistant_id: assistantId,
+            prefecture_user_token: payload.prefecture_user_token,
         });
 
+        if (!validatedInput.assistant_id) {
+            validatedInput.assistant_id = uuidv4().toString();
+            validatedInput.new_chat = true;
+        }
+
         // Processa a sessão
-        const sessionResult = await sessionService.processWebhookRequest({
+        const sessionResult = await sessionService.createSession({
             payload: validatedInput.payload,
             assistant_id: validatedInput.assistant_id,
         });
@@ -44,6 +50,7 @@ export async function processAssistantMessage(
             sessionId: session.id,
             userId: validatedInput.payload.usuario_id,
             prefectureId: validatedInput.payload.prefeitura_id,
+            prefectureUserToken: validatedInput.prefecture_user_token,
             payload: validatedInput.payload,
             metadata: {
                 isNewSession,
@@ -80,6 +87,9 @@ export async function processAssistantMessage(
         await memoryService.setSessionCache(validatedInput.payload.usuario_id, {
             assistant_id: finalAssistantId,
             assistant_chat_id: session.id,
+            payload: validatedInput.payload,
+            prefecture_user_token: validatedInput.prefecture_user_token,
+            user_token: validatedInput.user_token,
         });
 
         logger.info(`[AssistantAgent] Message processed successfully`);
@@ -133,6 +143,6 @@ export async function processWebhookRequest(request: any): Promise<{
 }
 
 // Re-exports
-export { invokeAssistantAgent } from "./assistant.agent";
+export { invokeAssistantAgent } from "./agent";
 export { databaseTools } from "../../tools/database.tool";
-export * from "./assistant.schemas";
+export * from "./schemas";

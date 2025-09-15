@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { processAssistantMessage, processWebhookRequest } from '../agents/assistant/assistant.index';
+import { processAssistantMessage, processWebhookRequest } from '../agents/assistant';
 import { logger } from '../utils/logger.util';
 
 export class AssistantController {
@@ -36,7 +36,7 @@ export class AssistantController {
     }
 
     /**
-     * Endpoint para webhook (replicando fluxo n8n)
+     * Endpoint para webhook
      */
     async webhook(req: Request, res: Response): Promise<void> {
         try {

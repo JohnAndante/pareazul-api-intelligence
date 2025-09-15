@@ -1,6 +1,5 @@
 import { redis } from '../config/redis.config';
 import { messageRepository } from '../repositories/message.repository';
-import { chatRepository } from '../repositories/chat.repository';
 import { ChatMessage, SessionCache } from '../types/chat.types';
 import { MemoryBuffer } from '../types/session.types';
 import { logger } from '../utils/logger.util';
@@ -133,71 +132,6 @@ export class MemoryService {
             return await this.setMemoryBuffer(chatId, recentMessages);
         } catch (error) {
             logger.error('Error updating memory buffer:', error);
-            return false;
-        }
-    }
-
-    /**
-     * Recupera contexto completo para o agente
-     */
-    async getAgentContext(sessionId: string): Promise<{
-        recentMessages: ChatMessage[];
-        sessionMeta: SessionCache | null;
-    }> {
-        try {
-            // Busca mensagens recentes do banco
-            const recentMessages = await messageRepository.getRecentMessages(sessionId, this.BUFFER_SIZE);
-
-            // Busca metadados da sessão
-            const session = await chatRepository.findById(sessionId);
-            const sessionMeta = session ? {
-                assistant_id: session.assistant_id,
-                assistant_chat_id: session.id,
-                user_id: session.user_id,
-                prefecture_id: session.prefecture_id,
-                created_at: session.created_at,
-                last_activity: new Date().toISOString()
-            } : null;
-
-            return {
-                recentMessages,
-                sessionMeta
-            };
-        } catch (error) {
-            logger.error('Error getting agent context:', error);
-            return {
-                recentMessages: [],
-                sessionMeta: null
-            };
-        }
-    }
-
-    /**
-     * Limpa cache de uma sessão
-     */
-    async clearSessionCache(userId: string): Promise<boolean> {
-        try {
-            const sessionKey = `${this.SESSION_CACHE_PREFIX}${userId}`;
-            await redis.del(sessionKey);
-            logger.debug(`Session cache cleared for user ${userId}`);
-            return true;
-        } catch (error) {
-            logger.error('Error clearing session cache:', error);
-            return false;
-        }
-    }
-
-    /**
-     * Limpa buffer de memória de uma sessão
-     */
-    async clearMemoryBuffer(sessionId: string): Promise<boolean> {
-        try {
-            const bufferKey = `${this.MEMORY_BUFFER_PREFIX}${sessionId}`;
-            await redis.del(bufferKey);
-            logger.debug(`Memory buffer cleared for session ${sessionId}`);
-            return true;
-        } catch (error) {
-            logger.error('Error clearing memory buffer:', error);
             return false;
         }
     }

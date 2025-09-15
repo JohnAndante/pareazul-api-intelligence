@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { assistantController } from '../controllers/assistant.controller';
 import { simpleAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
-import { WebhookRequestSchema } from '../agents/assistant/assistant.schemas';
+import { WebhookRequestSchema } from '../agents/assistant/schemas';
 
 const router = Router();
 

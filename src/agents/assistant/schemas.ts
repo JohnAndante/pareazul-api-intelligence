@@ -14,6 +14,9 @@ export const AssistantQuerySchema = z.object({
     }),
     assistant_id: z.string().optional(),
     session_id: z.string().optional(),
+    prefecture_user_token: z.string(),
+    user_token: z.string(),
+    new_chat: z.boolean().optional(),
 });
 
 export const WebhookRequestSchema = z.object({
@@ -29,6 +32,7 @@ export const WebhookRequestSchema = z.object({
         usuario_cpf: z.string(),
     }),
     prefecture_user_token: z.string(),
+    user_token: z.string(),
     message: z.string(),
     message_date: z.string(),
     message_date_local: z.string(),
@@ -47,6 +51,7 @@ export const AgentContextSchema = z.object({
     sessionId: z.string(),
     userId: z.string(),
     prefectureId: z.string(),
+    prefectureUserToken: z.string(),
     payload: z.object({
         prefeitura_id: z.string(),
         prefeitura_sigla: z.string(),

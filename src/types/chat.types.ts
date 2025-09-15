@@ -48,7 +48,9 @@ export interface WebhookResponse {
 export interface SessionCache {
     assistant_id: string;
     assistant_chat_id: string;
-    [key: string]: any;
+    payload: ChatPayload;
+    prefecture_user_token: string;
+    user_token: string;
 }
 
 export interface AgentContext {
