@@ -15,7 +15,7 @@
 
 ```
 ├── 🤖 agents/          # Agentes IA especializados
-├── 💼 services/        # Lógica de negócio  
+├── 💼 services/        # Lógica de negócio
 ├── 🗃️ repositories/    # Acesso a dados
 ├── 🛣️ routes/          # Roteamento da API
 ├── 🎮 controllers/     # Controladores HTTP
@@ -28,6 +28,7 @@
 ## 🚀 Quick Start
 
 ### Pré-requisitos
+
 - [Bun](https://bun.sh/) >= 1.0
 - Node.js >= 18
 - Redis Server
@@ -64,14 +65,35 @@ SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # Redis
-REDIS_URL=redis://localhost:6379
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
 
 # OpenAI
 OPENAI_API_KEY=your_openai_api_key
 
-# External APIs
-PAREAZUL_API_URL=your_pareazul_api_url
-PAREAZUL_API_KEY=your_pareazul_api_key
+# Security
+CORS_ORIGINS=http://localhost:3000
+
+# Auth
+API_SECRET_KEY=your_api_secret_key
+
+# File upload
+MAX_FILE_SIZE=10485760
+UPLOAD_DIR=uploads
+TEMP_DIR=temp
+
+# Audio processing
+AUDIO_MAX_DURATION=300
+AUDIO_ALLOWED_FORMATS=mp3,wav,m4a,ogg,flac
+
+# Session management
+SESSION_TTL=3600
+MEMORY_BUFFER_SIZE=20
+VECTOR_DIMENSIONS=1536
+
+# External services Health Check URLs
+OPENAI_HEALTH_URL=https://status.openai.com/api/v2/summary.json
 ```
 
 ## 📚 Scripts Disponíveis
@@ -95,16 +117,22 @@ bun run pre-commit   # Script de pré-commit (format + check)
 ## 🤖 Agentes Disponíveis
 
 ### Calculator Agent
+
 - **Endpoint**: `POST /api/calculator`
 - **Função**: Operações matemáticas avançadas
 - **Tools**: Operações básicas, funções trigonométricas, logaritmos
 
-### Chat Agent (Em desenvolvimento)
-- **Endpoint**: `POST /api/chat`
-- **Função**: Conversação geral + orquestração de outros agentes
-- **Tools**: MCP, Database, External APIs
+### Chat Agent ✅
+
+- **Endpoint**: `POST /api/chat/webhook` (replica fluxo n8n)
+- **Endpoint**: `POST /api/chat/message` (processamento direto)
+- **Função**: Conversação geral com contexto de sessão
+- **Tools**: Database tools, session management
+- **Memória**: Sistema híbrido Redis + Supabase
+- **Sessões**: Gerenciamento automático de sessões ativas
 
 ### Transcription Agent (Em desenvolvimento)
+
 - **Endpoint**: `POST /api/transcription`
 - **Função**: Conversão de áudio para texto
 - **Tools**: Whisper API, processamento de arquivos
@@ -139,21 +167,26 @@ bun run pre-commit   # Script de pré-commit (format + check)
 ## 📈 Status do Projeto
 
 ### ✅ Completo
+
 - [x] Infraestrutura base (configurações, utils, middleware)
 - [x] Calculator Agent funcional
+- [x] Chat Agent principal com tools programáticas
+- [x] Sistema de memória híbrido (Redis + Supabase)
+- [x] Gerenciamento de sessões
+- [x] Sistema de webhooks (replicando fluxo n8n)
+- [x] Repositórios para banco de dados
 - [x] Sistema de logging e monitoramento
 - [x] Linting e formatação automática
 - [x] Repositório Git configurado
 
 ### 🚧 Em Desenvolvimento
-- [ ] Chat Agent principal
-- [ ] Memory Service (vetorização)
-- [ ] Session Service
+
 - [ ] Transcription Agent
-- [ ] Webhook system
-- [ ] External API integrations
+- [ ] External API integrations (Pareazul)
+- [ ] Sistema de notificações
 
 ### 📋 Roadmap
+
 - [ ] Testes automatizados (unit + integration)
 - [ ] Docker containerization
 - [ ] CI/CD pipeline

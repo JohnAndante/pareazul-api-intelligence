@@ -1,0 +1,19 @@
+{
+    "session_id": "chat_assistente_369449",
+    "payload": {
+        "prefeitura_id": "1",
+        "prefeitura_sigla": "CPM",
+        "prefeitura_nome": "Campo Mourão",
+        "prefeitura_timezone": "America/Sao_Paulo",
+        "usuario_id": "369449",
+        "usuario_nome": "Walker Silvestre",
+        "usuario_email": "wlksilvestre@gmail.com",
+        "usuario_cpf": "11743457995"
+    },
+    "prefecture_user_token": "abc-123456987-123",
+    "message": "Olá! Como posso ativar meu veículo?",
+    "message_date": "2025-01-27T17:56:44",
+    "message_date_local": "2025-01-27T17:56:44",
+    "assistant_id": null,
+    "new_chat": true
+}

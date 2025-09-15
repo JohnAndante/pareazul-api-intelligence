@@ -1,5 +1,3 @@
-// src/routes/calculator.route.ts
-
 import { Router } from 'express';
 import { calculatorController } from '../controllers/calculator.controller';
 

@@ -1,6 +1,4 @@
-// src/middleware/rate-limit.middleware.ts
-
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { redis } from '../utils/redis.util';
 import { logger } from '../utils/logger.util';
 import { Request, Response, NextFunction } from 'express';
@@ -37,12 +35,12 @@ export const createRateLimit = (config: RateLimitConfig = {}) => {
       code: 'RATE_LIMIT_EXCEEDED',
       retryAfter: Math.ceil(windowMs / 1000),
     },
-    keyGenerator: keyGenerator || ((req: Request) => req.ip || '127.0.0.1'),
+    keyGenerator: keyGenerator || ((req: Request) => ipKeyGenerator(req.ip || '127.0.0.1')),
     skipFailedRequests,
     skipSuccessfulRequests,
     standardHeaders: headers,
     legacyHeaders: false,
-    // Store usando Redis
+    // Store usando Redis com fallback para memória
     store: {
       incr: async (key: string) => {
         try {
@@ -58,8 +56,8 @@ export const createRateLimit = (config: RateLimitConfig = {}) => {
             resetTime: new Date(Date.now() + windowMs),
           };
         } catch (error) {
-          logger.error('Rate limit store error:', error);
-          // Fallback: permitir request se Redis falhar
+          logger.warn('Rate limit Redis unavailable, using memory fallback:', error);
+          // Fallback: usar memória local (não persistente)
           return {
             totalHits: 1,
             resetTime: new Date(Date.now() + windowMs),
@@ -71,7 +69,7 @@ export const createRateLimit = (config: RateLimitConfig = {}) => {
           const redisKey = `rate_limit:${key}`;
           await redis.decr(redisKey);
         } catch (error) {
-          logger.error('Rate limit decrement error:', error);
+          logger.warn('Rate limit decrement Redis error:', error);
         }
       },
       resetKey: async (key: string) => {
@@ -79,7 +77,7 @@ export const createRateLimit = (config: RateLimitConfig = {}) => {
           const redisKey = `rate_limit:${key}`;
           await redis.del(redisKey);
         } catch (error) {
-          logger.error('Rate limit reset error:', error);
+          logger.warn('Rate limit reset Redis error:', error);
         }
       },
     },

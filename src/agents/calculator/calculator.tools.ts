@@ -1,5 +1,3 @@
-// src/agents/calculator/tools.ts
-
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { mathTool } from "../../tools/math.tool";
 import { MathInputSchema, MathInput } from "./calculator.schemas";

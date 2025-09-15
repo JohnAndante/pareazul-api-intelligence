@@ -7,6 +7,7 @@ import { promptTemplate } from "./calculator.prompt";
 const llm = new ChatOpenAI({
     modelName: "gpt-4o-mini",
     temperature: 0,
+    openAIApiKey: process.env.OPENAI_API_KEY || 'sk-placeholder',
 });
 
 // Criação do agente
@@ -21,5 +22,5 @@ export const calculatorAgentExecutor = new AgentExecutor({
     agent,
     tools: calculatorTools,
     verbose: true, // Para ver o raciocínio do agente
-    maxIterations: 5, // Evita loops infinitos
+    maxIterations: 25, // Evita loops infinitos
 });

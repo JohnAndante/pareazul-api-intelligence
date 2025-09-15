@@ -1,5 +1,3 @@
-// src/middleware/cors.middleware.ts
-
 import cors, { CorsOptions } from 'cors';
 import { logger } from '../utils/logger.util';
 

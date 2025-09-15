@@ -1,12 +1,9 @@
-// src/config/redis.config.ts
-
 import Redis from 'redis';
 import { env } from './environment.config';
 import { logger } from '../utils/logger.util';
 
 const redisConfig = {
-  url: env.REDIS_URL,
-  host: env.REDIS_HOST,
+  url: env.REDIS_HOST,
   port: env.REDIS_PORT,
   password: env.REDIS_PASSWORD,
   retryDelayOnFailover: 100,
