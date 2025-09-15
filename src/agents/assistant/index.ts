@@ -1,15 +1,16 @@
 import { invokeAssistantAgent } from "./agent";
 import { AssistantQuerySchema, WebhookRequestSchema, AgentContext } from "./schemas";
 import { memoryService } from "../../services/memory.service";
+import { sessionService } from "../../services/session.service";
 import { logger } from "../../utils/logger.util";
-import { uuidv4 } from "zod";
+import { ChatPayload } from "../../types/chat.types";
 
 /**
  * Função principal que processa uma mensagem de chat
  */
 export async function processAssistantMessage(
     message: string,
-    payload: any,
+    payload: ChatPayload,
     assistantId?: string
 ): Promise<{
     message: string;
@@ -25,15 +26,10 @@ export async function processAssistantMessage(
             message,
             payload,
             assistant_id: assistantId,
-            prefecture_user_token: payload.prefecture_user_token,
+            prefecture_user_token: '', // Será preenchido pelo webhook
         });
 
-        if (!validatedInput.assistant_id) {
-            validatedInput.assistant_id = uuidv4().toString();
-            validatedInput.new_chat = true;
-        }
-
-        // Processa a sessão
+        // Processa a sessão seguindo lógica do n8n
         const sessionResult = await sessionService.createSession({
             payload: validatedInput.payload,
             assistant_id: validatedInput.assistant_id,
@@ -88,8 +84,8 @@ export async function processAssistantMessage(
             assistant_id: finalAssistantId,
             assistant_chat_id: session.id,
             payload: validatedInput.payload,
-            prefecture_user_token: validatedInput.prefecture_user_token,
-            user_token: validatedInput.user_token,
+            prefecture_user_token: validatedInput.prefecture_user_token || '',
+            user_token: '',
         });
 
         logger.info(`[AssistantAgent] Message processed successfully`);
@@ -115,7 +111,12 @@ export async function processAssistantMessage(
 /**
  * Função para processar webhook completo (replicando fluxo n8n)
  */
-export async function processWebhookRequest(request: any): Promise<{
+export async function processWebhookRequest(request: {
+    message: string;
+    payload: ChatPayload;
+    assistant_id?: string;
+    prefecture_user_token?: string;
+}): Promise<{
     message: string;
     message_date: string;
     assistant_id: string;

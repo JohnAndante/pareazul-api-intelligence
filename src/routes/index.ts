@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import calculatorRoutes from './calculator.route';
 import assistantRoutes from './assistant.route';
 
 const router = Router();
@@ -12,9 +11,6 @@ router.get('/health', (req, res) => {
     service: 'pareazul-assistant-server',
   });
 });
-
-// Calculator routes
-router.use('/calculator', calculatorRoutes);
 
 // Chat routes
 router.use('/assistant', assistantRoutes);

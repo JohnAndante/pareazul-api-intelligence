@@ -1,8 +1,4 @@
-import { activationTools } from './activation/activation.tools';
-import { userTools } from './user.tools';
-import { vehicleTools } from './vehicle.tools';
-import { prefectureTools } from './prefecture.tools';
-import { notificationTools } from './notification.tools';
+import { activationTools } from './activation.tools';
 import { databaseTools } from './database.tool';
 
 /**
@@ -10,28 +6,11 @@ import { databaseTools } from './database.tool';
  */
 export function createAllTools() {
     return [
-        // Tools do MCP (principais funcionalidades)
+        // Tools da assistente
         ...activationTools,
-        ...userTools,
-        ...vehicleTools,
-        ...prefectureTools,
-        ...notificationTools,
 
         // Tools de banco de dados (contexto e sessão)
         ...databaseTools,
-    ];
-}
-
-/**
- * Cria apenas as tools do MCP (para uso específico)
- */
-export function createMCPTools() {
-    return [
-        ...activationTools,
-        ...userTools,
-        ...vehicleTools,
-        ...prefectureTools,
-        ...notificationTools
     ];
 }
 
@@ -43,4 +22,4 @@ export function createDatabaseTools() {
 }
 
 // Exportar tools individuais para uso específico
-export { activationTools, userTools, vehicleTools, prefectureTools, notificationTools, databaseTools };
+export { activationTools, databaseTools };

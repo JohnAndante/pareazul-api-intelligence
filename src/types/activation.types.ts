@@ -19,6 +19,11 @@ export interface HandleRegisterVehicleActivationParams {
     extend: boolean;
 };
 
+export interface CheckVehicleActivationParams {
+    userId: string;
+    vehiclePlate: string;
+}
+
 // Util types
 
 export interface ActivateVehicleParams {

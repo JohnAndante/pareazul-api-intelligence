@@ -35,7 +35,7 @@ export const registerVehicleActivationTool = new DynamicStructuredTool({
         'Only call this tool after user confirms their choice from the presented options.',
     schema: RegisterVehicleActivationSchema,
     func: async (input: RegisterVehicleActivationInput) => {
-        const result = await activationService.registerVehicleActivation(input);
+        const result = await activationService.handleRegisterVehicleActivation(input);
         return result.text;
     }
 });

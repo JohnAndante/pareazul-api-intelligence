@@ -82,7 +82,33 @@ export class ChatRepository extends BaseRepository<ChatSession> {
         }
     }
 
-    async createSession(sessionData: {
+    async findActiveSession(userId: string, assistantId: string): Promise<ChatSession | null> {
+        try {
+            const client = this.client;
+            const { data, error } = await client
+                .from(this.tableName)
+                .select('*')
+                .eq('user_id', userId)
+                .eq('assistant_id', assistantId)
+                .eq('is_active', true)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    return null;
+                }
+                logger.error('Error finding active session by user and assistant id:', error);
+                return null;
+            }
+
+            return data as ChatSession;
+        } catch (error) {
+            logger.error('Exception finding active session by user and assistant id:', error);
+            return null;
+        }
+    }
+
+    async createChat(sessionData: {
         user_id: string;
         prefecture_id: string;
         assistant_id: string;
@@ -96,7 +122,7 @@ export class ChatRepository extends BaseRepository<ChatSession> {
 
             return await this.create(data);
         } catch (error) {
-            logger.error('Exception creating session:', error);
+            logger.error('Exception creating chat session:', error);
             return null;
         }
     }

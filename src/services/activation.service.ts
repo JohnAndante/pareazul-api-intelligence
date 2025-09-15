@@ -1,18 +1,16 @@
 import { memoryService } from "./memory.service";
 import { activateVehicle, fetchVehicleCurrentActivations } from "../api/activation.api";
-import { StringUtil } from '../utils/string.util';
-import { logger } from "../utils/logger.util";
-
-import { HandleRegisterVehicleActivationParams } from "../types/activation.types";
-import { CheckVehicleActivationParams } from '../types/mcp.types';
 import { fetchUserVehicles } from "../api/vehicle.api";
 import { fetchPrefectureRules } from "../api/prefecture.api";
 import { extractActivationData } from "../utils/activation.utils";
+import { StringUtil } from '../utils/string.util';
+import { logger } from "../utils/logger.util";
 
-export class ActivationService {
+import { HandleRegisterVehicleActivationParams, CheckVehicleActivationParams } from '../types/activation.types';
+
+class ActivationService {
     private readonly logger = logger.child({ service: 'ActivationService' });
-
-    async checkCurrentVehicleActivation(params: CheckVehicleActivationParams): Promise<{ text: string }> {
+    checkCurrentVehicleActivation(params: CheckVehicleActivationParams): Promise<{ text: string }> {
         return new Promise((resolve, reject) => {
             const { userId, vehiclePlate } = params;
 
@@ -58,7 +56,7 @@ export class ActivationService {
         })
     }
 
-    async handleRegisterVehicleActivation(input: HandleRegisterVehicleActivationParams): Promise<{ text: string }> {
+    handleRegisterVehicleActivation(input: HandleRegisterVehicleActivationParams): Promise<{ text: string }> {
         return new Promise((resolve, reject) => {
             const { userId, vehiclePlate, timeValueRuleId, previousActivationId, extend } = input;
 
@@ -207,3 +205,5 @@ export class ActivationService {
         })
     }
 }
+
+export const activationService = new ActivationService();
