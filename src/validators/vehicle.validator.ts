@@ -1,30 +1,28 @@
 import { z } from 'zod';
+import {
+    userIdValidator,
+    vehiclePlateValidator
+} from './shared.validator';
 
-export const GetUserVehiclesSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
-    plate: z
-        .string()
-        .trim()
-        .toUpperCase()
-        .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Plate number must be a valid format')
-        .max(8, 'Plate number must be at most 8 characters')
-        .optional(),
+export const GetUserVehiclesValidator = z.object({
+    userId: userIdValidator,
+
+    plate: vehiclePlateValidator
+        .optional()
+        .describe('The plate of the vehicle (optional filter)'),
+
     model: z
         .string()
         .trim()
         .toLowerCase()
         .optional()
+        .describe('The model of the vehicle (optional filter)'),
 });
 
-export const RegisterUserVehicleSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
+export const RegisterUserVehicleValidator = z.object({
+    userId: userIdValidator,
     vehicle: z.object({
-        plate: z
-            .string()
-            .trim()
-            .toUpperCase()
-            .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Plate number must be a valid format')
-            .max(8, 'Plate number must be at most 8 characters'),
+        plate: vehiclePlateValidator,
         model: z
             .string()
             .trim()
@@ -38,5 +36,5 @@ export const RegisterUserVehicleSchema = z.object({
     })
 });
 
-export type GetUserVehiclesInput = z.infer<typeof GetUserVehiclesSchema>;
-export type RegisterUserVehicleInput = z.infer<typeof RegisterUserVehicleSchema>;
+export type GetUserVehiclesInput = z.infer<typeof GetUserVehiclesValidator>;
+export type RegisterUserVehicleInput = z.infer<typeof RegisterUserVehicleValidator>;

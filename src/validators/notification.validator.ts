@@ -1,18 +1,17 @@
 import { z } from 'zod';
+import {
+    userIdValidator,
+    vehiclePlateValidator,
+} from './shared.validator';
 
-export const GetAllUserVehiclesCurrentNotificationsSchema = z.object({
-    userId: z.string().min(1, 'User ID is required')
+export const GetAllUserVehiclesCurrentNotificationsValidator = z.object({
+    userId: userIdValidator,
 });
 
-export const GetCurrentNotificationsForVehicleSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
-    vehiclePlate: z
-        .string()
-        .trim()
-        .toUpperCase()
-        .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Vehicle plate must be a valid format')
-        .max(8, 'Vehicle plate must be at most 8 characters')
+export const GetCurrentNotificationsForVehicleValidator = z.object({
+    userId: userIdValidator,
+    vehiclePlate: vehiclePlateValidator,
 });
 
-export type GetAllUserVehiclesCurrentNotificationsInput = z.infer<typeof GetAllUserVehiclesCurrentNotificationsSchema>;
-export type GetCurrentNotificationsForVehicleInput = z.infer<typeof GetCurrentNotificationsForVehicleSchema>;
+export type GetAllUserVehiclesCurrentNotificationsInput = z.infer<typeof GetAllUserVehiclesCurrentNotificationsValidator>;
+export type GetCurrentNotificationsForVehicleInput = z.infer<typeof GetCurrentNotificationsForVehicleValidator>;

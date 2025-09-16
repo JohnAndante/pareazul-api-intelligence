@@ -1,17 +1,13 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
-import { z } from "zod";
 import { searchVectors } from "../utils/vector-search.util";
 import { logger } from "../utils/logger.util";
-
-const FaqSearchSchema = z.object({
-    query: z.string().describe("The question or query to search for in the FAQ database"),
-});
+import { FaqSearchValidator, type FaqSearchInput } from "../validators/faq.validator";
 
 export const faqSearchTool = new DynamicStructuredTool({
     name: "faq_search",
     description: "Search for frequently asked questions and answers in the knowledge base using vector similarity",
-    schema: FaqSearchSchema,
-    func: async ({ query }) => {
+    schema: FaqSearchValidator,
+    func: async ({ query }: FaqSearchInput) => {
         try {
             logger.info(`[FaqTool] Searching FAQ for: "${query}"`);
 

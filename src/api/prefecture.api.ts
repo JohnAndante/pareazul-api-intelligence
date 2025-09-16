@@ -1,31 +1,30 @@
-import axiosWebservice from "../helpers/axiosWebservice";
-import { logger as loggerUtil } from "../utils/logger.util";
-import { Rule } from "../types/prefecture.types";
+import axiosWebservice from '../helpers/axiosWebservice';
+import { logger } from '../utils/logger.util';
+import type { Rule } from '../types/prefecture.types';
 
-const logger = loggerUtil.child({ service: 'PrefectureApi' });
-
-export const fetchPrefectureRules = (
+export const fetchPrefectureRules = async (
     prefectureId: string,
     prefectureToken: string
-) => new Promise<Rule[]>((resolve, reject) => {
-    const path = `/v4/prefeituras/${prefectureId}/regras`;
+): Promise<Rule[]> => {
+    return Promise.resolve()
+        .then(async () => {
+            const url = `/v4/regras?prefeitura_id=${prefectureId}`;
 
-    return axiosWebservice.get(path, {
-        headers: { 'x-access-key': prefectureToken },
-    })
-        .then(response => {
-            const { data: rules } = response;
+            const response = await axiosWebservice.get(url, {
+                headers: { 'x-access-key': prefectureToken }
+            });
 
-            if (!Array.isArray(rules) || rules.length === 0) {
-                throw new Error("No rules found for prefecture.");
+            const data = response.data;
+
+            if (!Array.isArray(data) || data.length === 0) {
+                throw new Error(`No rules found for prefecture ID ${prefectureId}.`);
             }
 
-            return rules;
+            return data;
         })
-        .then(resolve)
         .catch(error => {
             const errorMessage = error.response?.data?.message || error.message || error;
-            logger.error("[fetchPrefectureRules] Error fetching prefecture rules:", error);
-            reject(errorMessage);
+            logger.error('[fetchPrefectureRules] Error fetching prefecture rules:', errorMessage);
+            throw errorMessage;
         });
-});
+};

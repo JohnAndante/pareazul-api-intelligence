@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { userIdValidator } from './shared.validator';
 
-export const GetUserBalanceSchema = z.object({
-    userId: z.string().min(1, 'User ID is required')
+export const GetUserBalanceValidator = z.object({
+    userId: userIdValidator,
 });
 
-export type GetUserBalanceInput = z.infer<typeof GetUserBalanceSchema>;
+export type GetUserBalanceInput = z.infer<typeof GetUserBalanceValidator>;

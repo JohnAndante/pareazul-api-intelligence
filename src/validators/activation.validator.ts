@@ -1,35 +1,37 @@
 import { z } from 'zod';
+import {
+    userIdValidator,
+    vehiclePlateValidator,
+} from './shared.validator';
 
-export const CheckVehicleActivationSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
-    vehiclePlate: z
-        .string()
-        .trim()
-        .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Vehicle plate must be a valid plate number')
-        .min(7, 'Vehicle plate must be at least 7 characters')
-        .max(8, 'Vehicle plate must be at most 8 characters')
+export const ChechVehicleActivationValidator = z.object({
+    userId: userIdValidator,
+    vehiclePlate: vehiclePlateValidator,
+
 });
 
-export type CheckVehicleActivationInput = z.infer<typeof CheckVehicleActivationSchema>;
+export type CheckVehicleActivationInput = z.infer<typeof ChechVehicleActivationValidator>;
 
-export const RegisterVehicleActivationSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
-    vehiclePlate: z
-        .string()
-        .trim()
-        .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Vehicle plate must be a valid plate number')
-        .min(7, 'Vehicle plate must be at least 7 characters')
-        .max(8, 'Vehicle plate must be at most 8 characters'),
+export const RegisterVehicleActivationValidator = z.object({
+    userId: userIdValidator,
+    vehiclePlate: vehiclePlateValidator,
+
     timeValueRuleId: z
         .number()
         .int('Time value rule ID must be an integer')
-        .positive('Time value rule ID must be positive'),
+        .positive('Time value rule ID must be positive')
+        .describe('The time value rule ID'),
+
     previousActivationId: z
         .number()
         .int('Previous activation ID must be an integer')
         .positive('Previous activation ID must be positive')
-        .optional(),
-    extend: z.boolean()
+        .optional()
+        .describe('The previous activation ID (optional)'),
+
+    extend: z
+        .boolean()
+        .describe('Whether this is an extension of a previous activation'),
 });
 
-export type RegisterVehicleActivationInput = z.infer<typeof RegisterVehicleActivationSchema>;
+export type RegisterVehicleActivationInput = z.infer<typeof RegisterVehicleActivationValidator>;

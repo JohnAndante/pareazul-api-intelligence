@@ -1,16 +1,19 @@
 import axiosWebservice from "../helpers/axiosWebservice";
+import { logger } from "../utils/logger.util";
 import { APIVehicle, Vehicle } from "../types/vehicle.types";
 
-export const fetchUserVehicles = (
+export const fetchUserVehicles = async (
     userId: string,
     prefectureToken: string
-) => new Promise<APIVehicle[]>((resolve, reject) => {
-    const path = `/v4/usuarios/${userId}/veiculos`;
+): Promise<APIVehicle[]> => {
+    return Promise.resolve()
+        .then(async () => {
+            const path = `/v4/usuarios/${userId}/veiculos`;
 
-    return axiosWebservice.get(path, {
-        headers: { 'x-access-key': prefectureToken },
-    })
-        .then(response => {
+            const response = await axiosWebservice.get(path, {
+                headers: { 'x-access-key': prefectureToken },
+            });
+
             if (response.status !== 200) {
                 return [];
             }
@@ -30,9 +33,37 @@ export const fetchUserVehicles = (
 
             return parsedVehicles;
         })
-        .then(resolve)
         .catch(error => {
             const errorMessage = error.response?.data?.message || error.message || error;
-            reject(errorMessage);
+            logger.error('[fetchUserVehicles] Error fetching user vehicles:', errorMessage);
+            throw errorMessage;
         });
-});
+};
+
+export const postCreateVehicle = async (
+    userId: string,
+    vehicle: { plate: string; model: string; vehicle_type_id: number },
+    prefectureToken: string
+): Promise<any> => {
+    return Promise.resolve()
+        .then(async () => {
+            const path = `/v4/usuarios/${userId}/veiculos`;
+
+            const vehicleData = {
+                placa: vehicle.plate.toUpperCase(),
+                modelo: vehicle.model,
+                tipo_veiculo_id: vehicle.vehicle_type_id
+            };
+
+            const response = await axiosWebservice.post(path, vehicleData, {
+                headers: { 'x-access-key': prefectureToken },
+            });
+
+            return response.data;
+        })
+        .catch(error => {
+            const errorMessage = error.response?.data?.message || error.message || error;
+            logger.error('[postCreateVehicle] Error creating vehicle:', errorMessage);
+            throw errorMessage;
+        });
+};

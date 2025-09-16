@@ -1,21 +1,18 @@
 import { z } from 'zod';
+import { userIdValidator } from './shared.validator';
 
-export const GetPrefectureRulesSchema = z.object({
-    userId: z.string().min(1, 'User ID is required')
+export const GetPrefectureRulesValidator = z.object({
+    userId: userIdValidator,
 });
 
-export const GetPrefectureZonesSchema = z.object({
-    userId: z.string().min(1, 'User ID is required')
-});
-
-export const GetPrefectureZoneRulesSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
+export const GetPrefectureZoneRulesValidator = z.object({
+    userId: userIdValidator,
     zoneId: z
         .number()
-        .int('Zone ID must be an integer')
         .positive('Zone ID must be positive')
+        .int('Zone ID must be an integer')
+        .describe('The unique identifier for the zone'),
 });
 
-export type GetPrefectureRulesInput = z.infer<typeof GetPrefectureRulesSchema>;
-export type GetPrefectureZonesInput = z.infer<typeof GetPrefectureZonesSchema>;
-export type GetPrefectureZoneRulesInput = z.infer<typeof GetPrefectureZoneRulesSchema>;
+export type GetPrefectureRulesInput = z.infer<typeof GetPrefectureRulesValidator>;
+export type GetPrefectureZoneRulesInput = z.infer<typeof GetPrefectureZoneRulesValidator>;
