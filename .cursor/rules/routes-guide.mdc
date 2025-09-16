@@ -1,0 +1,453 @@
+---
+alwaysApply: false
+description: Guia Completo de Routes - Roteamento HTTP
+---
+
+# 🛣️ Guia Completo de Routes - Roteamento HTTP
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para Routes no projeto Pare Azul API Intelligence. As Routes são responsáveis por definir os endpoints da API, aplicar middlewares de segurança e validação, e conectar requisições HTTP aos controllers apropriados.
+
+## 🎯 Propósito das Routes
+
+### **1. Definição de Endpoints**
+
+- **Mapeamento** de URLs para controllers
+- **Definição** de métodos HTTP
+- **Organização** de rotas por domínio
+- **Versionamento** de API
+
+### **2. Aplicação de Middlewares**
+
+- **Autenticação** e autorização
+- **Validação** de dados de entrada
+- **Rate limiting** e segurança
+- **CORS** e headers de segurança
+
+### **3. Estrutura da API**
+
+- **RESTful** design
+- **Consistência** de endpoints
+- **Documentação** implícita
+- **Manutenibilidade** de rotas
+
+## 🏗️ Estrutura Padrão
+
+### **1. Template Base**
+
+```typescript
+// src/routes/[domain].route.ts
+import { Router } from 'express';
+import { [domain]Controller } from '../controllers/[domain].controller';
+import { [middleware] } from '../middleware/[middleware].middleware';
+import { [validator] } from '../[validators]/[domain].validator';
+
+const router = Router();
+
+// Health check
+router.get('/health', [domain]Controller.health.bind([domain]Controller));
+
+// [Descrição do endpoint]
+router.[method](
+    '/[endpoint]',
+    [middleware1],
+    [middleware2],
+    validate({ [body|query|params]: [Schema] }),
+    [domain]Controller.[methodName].bind([domain]Controller)
+);
+
+// [Outro endpoint]
+router.[method](
+    '/[endpoint]',
+    [middleware1],
+    validate({ [body|query|params]: [Schema] }),
+    [domain]Controller.[methodName].bind([domain]Controller)
+);
+
+export default router;
+```
+
+### **2. Padrões Obrigatórios**
+
+```typescript
+// ✅ SEMPRE usar bind() para métodos de controller
+router.get('/health', assistantController.health.bind(assistantController));
+
+// ✅ SEMPRE aplicar middlewares na ordem correta
+router.post(
+  '/webhook',
+  simpleAuth, // 1. Autenticação
+  validate({ body: Schema }), // 2. Validação
+  controller.method.bind(controller) // 3. Controller
+);
+
+// ❌ NUNCA esquecer o bind() nos métodos
+router.get('/health', assistantController.health); // ❌ Perde contexto
+
+// ❌ NUNCA aplicar middlewares na ordem errada
+router.post(
+  '/webhook',
+  validate({ body: Schema }), // ❌ Validação antes da auth
+  simpleAuth,
+  controller.method.bind(controller)
+);
+```
+
+## 🔧 Componentes Obrigatórios
+
+### **1. Imports Padrão**
+
+```typescript
+// Imports obrigatórios para todas as routes
+import { Router } from 'express';
+import { [domain]Controller } from '../controllers/[domain].controller';
+import { [middleware] } from '../middleware/[middleware].middleware';
+import { [validator] } from '../[validators]/[domain].validator';
+```
+
+### **2. Estrutura de Rota**
+
+```typescript
+// Estrutura padrão de uma rota
+router.[method](
+    '/[endpoint]',                    // 1. Path da rota
+    [middleware1],                     // 2. Middlewares de segurança
+    [middleware2],                     // 3. Middlewares de validação
+    validate({ [body|query|params]: [Schema] }), // 4. Validação de dados
+    [domain]Controller.[methodName].bind([domain]Controller) // 5. Controller
+);
+```
+
+### **3. Ordem de Middlewares**
+
+```typescript
+// Ordem obrigatória de middlewares
+router.[method](
+    '/[endpoint]',
+    // 1. Segurança (CORS, Helmet, etc.)
+    corsMiddleware,
+    securityMiddleware,
+
+    // 2. Rate Limiting
+    rateLimitMiddleware,
+
+    // 3. Autenticação
+    authMiddleware,
+
+    // 4. Validação
+    validate({ body: Schema }),
+
+    // 5. Controller
+    controller.method.bind(controller)
+);
+```
+
+## 📊 Exemplos Implementados
+
+### **1. Routes Principal**
+
+```typescript
+// src/routes/index.ts
+import { Router } from 'express';
+import assistantRoutes from './assistant.route';
+
+const router = Router();
+
+// Health check route
+router.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    service: 'pareazul-assistant-server',
+  });
+});
+
+// Chat routes
+router.use('/assistant', assistantRoutes);
+
+export default router;
+```
+
+**Características:**
+
+- **Health check** centralizado
+- **Agregação** de rotas por domínio
+- **Estrutura** hierárquica clara
+- **Status** padronizado
+
+### **2. Assistant Routes**
+
+```typescript
+// src/routes/assistant.route.ts
+import { Router } from 'express';
+import { assistantController } from '../controllers/assistant.controller';
+import { simpleAuth } from '../middleware/auth.middleware';
+import { validate } from '../middleware/validation.middleware';
+import { WebhookRequestSchema } from '../agents/assistant/schemas';
+
+const router = Router();
+
+// Health check
+router.get('/health', assistantController.health.bind(assistantController));
+
+// Webhook endpoint (replicando fluxo n8n)
+router.post(
+  '/webhook',
+  simpleAuth,
+  validate({ body: WebhookRequestSchema }),
+  assistantController.webhook.bind(assistantController)
+);
+
+// Endpoint para processar mensagem diretamente
+router.post('/message', simpleAuth, assistantController.processMessage.bind(assistantController));
+
+export default router;
+```
+
+**Características:**
+
+- **Middlewares** aplicados corretamente
+- **Validação** específica por endpoint
+- **Bind** correto dos métodos
+- **Organização** clara de endpoints
+
+## 🎯 Melhores Práticas
+
+### **1. Nomenclatura**
+
+```typescript
+// ✅ BOM: Nomes descritivos e consistentes
+router.get('/health', controller.health.bind(controller));
+router.post('/webhook', controller.webhook.bind(controller));
+router.post('/message', controller.processMessage.bind(controller));
+
+// ❌ RUIM: Nomes genéricos ou inconsistentes
+router.get('/status', controller.health.bind(controller));
+router.post('/hook', controller.webhook.bind(controller));
+router.post('/msg', controller.processMessage.bind(controller));
+```
+
+### **2. Estrutura de Paths**
+
+```typescript
+// ✅ BOM: Paths RESTful e consistentes
+router.get('/health', controller.health.bind(controller));
+router.post('/webhook', controller.webhook.bind(controller));
+router.post('/message', controller.processMessage.bind(controller));
+
+// ❌ RUIM: Paths inconsistentes ou não-RESTful
+router.get('/status', controller.health.bind(controller));
+router.post('/webhook', controller.webhook.bind(controller));
+router.post('/send-message', controller.processMessage.bind(controller));
+```
+
+### **3. Middlewares**
+
+```typescript
+// ✅ BOM: Middlewares na ordem correta
+router.post(
+  '/webhook',
+  simpleAuth, // 1. Autenticação
+  validate({ body: Schema }), // 2. Validação
+  controller.webhook.bind(controller) // 3. Controller
+);
+
+// ❌ RUIM: Middlewares na ordem errada
+router.post(
+  '/webhook',
+  validate({ body: Schema }), // ❌ Validação antes da auth
+  simpleAuth,
+  controller.webhook.bind(controller)
+);
+```
+
+### **4. Validação**
+
+```typescript
+// ✅ BOM: Validação específica e clara
+router.post(
+  '/webhook',
+  simpleAuth,
+  validate({ body: WebhookRequestSchema }),
+  controller.webhook.bind(controller)
+);
+
+// ❌ RUIM: Validação genérica ou inadequada
+router.post(
+  '/webhook',
+  simpleAuth,
+  validate({ body: {} }), // ❌ Schema vazio
+  controller.webhook.bind(controller)
+);
+```
+
+### **5. Bind de Métodos**
+
+```typescript
+// ✅ BOM: Bind correto dos métodos
+router.get('/health', assistantController.health.bind(assistantController));
+router.post('/webhook', assistantController.webhook.bind(assistantController));
+
+// ❌ RUIM: Sem bind (perde contexto)
+router.get('/health', assistantController.health);
+router.post('/webhook', assistantController.webhook);
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Requisição HTTP**
+
+```
+HTTP Request → Express Router → Middleware Stack → Controller
+```
+
+### **2. Middleware Stack**
+
+```
+CORS → Security → Rate Limit → Auth → Validation → Controller
+```
+
+### **3. Response Flow**
+
+```
+Controller → Response → Client
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Organização**
+
+- **Separação** por domínio
+- **Estrutura** hierárquica clara
+- **Reutilização** de middlewares
+- **Manutenibilidade** facilitada
+
+### **2. Segurança**
+
+- **Middlewares** de segurança aplicados
+- **Validação** robusta de dados
+- **Autenticação** consistente
+- **Rate limiting** implementado
+
+### **3. Consistência**
+
+- **Padrão uniforme** em todas as rotas
+- **Bind** correto dos métodos
+- **Validação** padronizada
+- **Error handling** consistente
+
+### **4. Escalabilidade**
+
+- **Modularidade** por domínio
+- **Fácil adição** de novas rotas
+- **Middleware** reutilizável
+- **Versionamento** de API
+
+## 📈 Recomendações de Melhoria
+
+### **1. Route Factory**
+
+```typescript
+// Factory para criar rotas padronizadas
+class RouteFactory {
+  static createRoute(
+    method: string,
+    path: string,
+    controller: any,
+    methodName: string,
+    middlewares: any[] = [],
+    validation?: any
+  ) {
+    const route = router[method](path);
+
+    // Aplicar middlewares
+    middlewares.forEach(middleware => route.use(middleware));
+
+    // Aplicar validação se fornecida
+    if (validation) {
+      route.use(validate(validation));
+    }
+
+    // Aplicar controller
+    route.use(controller[methodName].bind(controller));
+
+    return route;
+  }
+}
+```
+
+### **2. Route Registry**
+
+```typescript
+// Registry para gerenciar rotas
+class RouteRegistry {
+  private routes = new Map<string, Router>();
+
+  register(name: string, router: Router): void {
+    this.routes.set(name, router);
+  }
+
+  get(name: string): Router {
+    return this.routes.get(name);
+  }
+
+  getAll(): Map<string, Router> {
+    return this.routes;
+  }
+}
+
+export const routeRegistry = new RouteRegistry();
+```
+
+### **3. Route Documentation**
+
+```typescript
+// Documentação automática de rotas
+interface RouteDocumentation {
+  method: string;
+  path: string;
+  description: string;
+  middlewares: string[];
+  validation?: any;
+  controller: string;
+  methodName: string;
+}
+
+class RouteDocumenter {
+  static document(router: Router): RouteDocumentation[] {
+    // Extrair informações das rotas para documentação
+    const routes: RouteDocumentation[] = [];
+
+    // Implementar extração de informações
+    return routes;
+  }
+}
+```
+
+### **4. Route Testing**
+
+```typescript
+// Utilitários para teste de rotas
+class RouteTester {
+  static testRoute(
+    router: Router,
+    method: string,
+    path: string,
+    expectedStatus: number,
+    body?: any
+  ) {
+    // Implementar testes automatizados de rotas
+  }
+}
+```
+
+## 🎯 Conclusão
+
+A arquitetura de Routes no projeto está bem estruturada e segue padrões consistentes. O uso de **middlewares** na ordem correta, **validação** robusta, **bind** correto dos métodos e **organização** por domínio garante código limpo e maintível.
+
+As principais melhorias seriam implementar **Route Factory**, **Route Registry** e **Route Documentation** para tornar o sistema ainda mais robusto e documentado.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

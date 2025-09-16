@@ -1,0 +1,441 @@
+---
+description: Guia Completo de Agentes LangChain
+alwaysApply: false
+---
+
+# 🤖 Guia Completo de Agentes LangChain
+
+## 📋 Visão Geral
+
+Este documento explica detalhadamente como funcionam os agentes LangChain, suas dependências, configurações, sistema de memória e como as tools são anexadas, baseado na implementação do projeto Pare Azul API Intelligence.
+
+## 🏗️ Arquitetura de um Agente LangChain
+
+### Componentes Fundamentais
+
+Um agente LangChain é composto por:
+
+```typescript
+// Componentes principais
+- LLM (Large Language Model)    // Cérebro do agente
+- Tools (Ferramentas)           // Capacidades do agente
+- Prompt Template               // Instruções e contexto
+- Agent Executor                // Orquestrador principal
+- Memory (Opcional)             // Memória de conversas
+```
+
+### Fluxo de Execução
+
+```mermaid
+graph TD
+    A[Input do Usuário] --> B[Agent Executor]
+    B --> C[LLM + Prompt]
+    C --> D[Precisa usar Tool?]
+    D --> E[Sim]
+    E --> F[Seleciona Tool]
+    F --> G[Executa Tool]
+    G --> H[Não]
+    H --> I[Resposta Direta]
+    I --> J[Retorna Resultado]
+    J --> K[LLM Processa]
+    K --> L[Resposta Final]
+```
+
+## 🔧 Configuração Detalhada
+
+### 1. Configuração do LLM
+
+```typescript
+// src/agents/assistant/agent.ts
+const llm = new ChatOpenAI({
+  modelName: 'gpt-4o-mini', // Modelo específico
+  temperature: 0.3, // Criatividade (0-1)
+  topP: 0.9, // Nucleus sampling
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  maxTokens: 4000, // Limite de tokens
+  timeout: 30000, // Timeout em ms
+});
+```
+
+**Parâmetros importantes:**
+
+- **`temperature`**: Controla a aleatoriedade (0 = determinístico, 1 = muito criativo)
+- **`topP`**: Nucleus sampling - considera apenas os tokens mais prováveis
+- **`maxTokens`**: Limite máximo de tokens na resposta
+- **`timeout`**: Tempo limite para a requisição
+
+### 2. Sistema de Prompts Dinâmicos
+
+```typescript
+// src/agents/assistant/prompt.ts
+const createDynamicPrompt = (payload: any) => {
+  const currentDate = new Date().toISOString();
+
+  // Processa o prompt completamente antes de usar
+  const systemPrompt = createPromptTemplate(payload, currentDate);
+
+  return ChatPromptTemplate.fromMessages([
+    ['system', systemPrompt], // Instruções do sistema
+    ['human', '{input}'], // Input do usuário
+    ['placeholder', '{agent_scratchpad}'], // Rascunho do agente
+  ]);
+};
+```
+
+**Estrutura do Prompt:**
+
+- **System Message**: Instruções permanentes, regras de comportamento
+- **Human Message**: Input do usuário atual
+- **Agent Scratchpad**: Histórico de ações e observações
+
+### 3. Criação do Agente
+
+```typescript
+// src/agents/assistant/agent.ts
+export const createAssistantAgent = async (payload: any) => {
+  const promptTemplate = createDynamicPrompt(payload);
+  const tools = createAllTools(); // Todas as tools disponíveis
+
+  const agent = await createOpenAIToolsAgent({
+    llm, // Modelo de linguagem
+    tools, // Ferramentas disponíveis
+    prompt: promptTemplate, // Template de prompt
+  });
+
+  return new AgentExecutor({
+    agent, // Agente criado
+    tools, // Mesmas tools
+    verbose: process.env.NODE_ENV === 'development',
+    returnIntermediateSteps: process.env.NODE_ENV === 'development',
+    maxIterations: 12, // Máximo de iterações
+    earlyStoppingMethod: 'generate', // Método de parada antecipada
+    handleParsingErrors: true, // Trata erros de parsing
+  });
+};
+```
+
+## 🛠️ Sistema de Tools
+
+### 1. Estrutura de uma Tool
+
+```typescript
+// src/tools/faq.tool.ts
+export const faqSearchTool = new DynamicStructuredTool({
+  name: 'faq_search', // Nome único da tool
+  description: 'Search for frequently asked questions...', // Descrição para o LLM
+  schema: FaqSearchSchema, // Schema Zod para validação
+  func: async ({ query }) => {
+    // Função de execução
+    try {
+      const results = await searchVectors(query);
+      return results || 'No relevant FAQ entries found.';
+    } catch (error) {
+      return 'Error searching FAQ database.';
+    }
+  },
+});
+```
+
+### 2. Como as Tools são Anexadas
+
+```typescript
+// src/tools/index.ts
+export function createAllTools() {
+  return [
+    ...activationTools, // Tools de ativação
+    ...databaseTools, // Tools de banco de dados
+    ...faqTools, // Tools de FAQ
+  ];
+}
+
+// src/agents/assistant/agent.ts
+const tools = createAllTools(); // Agrega todas as tools
+const agent = await createOpenAIToolsAgent({
+  llm,
+  tools, // Passa as tools para o agente
+  prompt: promptTemplate,
+});
+```
+
+### 3. Processo de Seleção de Tools
+
+1. **LLM analisa** o input do usuário
+2. **Identifica** se precisa de informações externas
+3. **Seleciona** a tool mais apropriada baseada na descrição
+4. **Chama** a tool com os parâmetros corretos
+5. **Processa** o resultado da tool
+6. **Gera** resposta final incorporando os dados
+
+## 🧠 Sistema de Memória
+
+### 1. Memória Híbrida (Redis + Supabase)
+
+```typescript
+// src/services/memory.service.ts
+export class MemoryService {
+  // Cache de sessão no Redis
+  async setSessionCache(userId: string, sessionData: SessionCache): Promise<boolean> {
+    const key = `chat_assistente_${userId}`;
+    await redis.setEx(key, this.SESSION_TTL, JSON.stringify(sessionData));
+  }
+
+  // Buffer de memória para mensagens recentes
+  async setMemoryBuffer(sessionId: string, messages: ChatMessage[]): Promise<boolean> {
+    const key = `memory_buffer_${sessionId}`;
+    const buffer: MemoryBuffer = {
+      messages: messages.map(msg => ({
+        role: msg.subject,
+        content: msg.content,
+        timestamp: msg.created_at,
+      })),
+      maxSize: this.BUFFER_SIZE,
+    };
+    await redis.setEx(key, this.SESSION_TTL, JSON.stringify(buffer));
+  }
+}
+```
+
+### 2. Integração com o Agente
+
+```typescript
+// src/agents/assistant/index.ts
+export async function processAssistantMessage(message: string, payload: ChatPayload) {
+  // 1. Processa sessão
+  const sessionResult = await sessionService.createSession({ payload });
+
+  // 2. Registra mensagem do usuário
+  await memoryService.addMessage(session.id, 'user', message);
+
+  // 3. Invoca agente com contexto
+  const agentResponse = await invokeAssistantAgent(message, context);
+
+  // 4. Registra resposta do agente
+  await memoryService.addMessage(session.id, 'assistant', agentResponse);
+
+  // 5. Atualiza cache da sessão
+  await memoryService.setSessionCache(userId, sessionData);
+}
+```
+
+## 🔄 Fluxo Completo de Execução
+
+### 1. Entrada e Validação
+
+```typescript
+// Controller recebe requisição
+const { message, payload, assistant_id } = req.body;
+
+// Valida entrada
+const validatedInput = AssistantQuerySchema.parse({
+  message,
+  payload,
+  assistant_id,
+});
+```
+
+### 2. Gerenciamento de Sessão
+
+```typescript
+// Verifica se existe sessão ativa
+const sessionResult = await sessionService.createSession({
+  payload: validatedInput.payload,
+  assistant_id: validatedInput.assistant_id,
+});
+
+// Cria contexto para o agente
+const context: AgentContext = {
+  sessionId: session.id,
+  userId: payload.usuario_id,
+  prefectureId: payload.prefeitura_id,
+  payload: payload,
+  metadata: { isNewSession, sessionCreatedAt: session.created_at },
+};
+```
+
+### 3. Execução do Agente
+
+```typescript
+// src/agents/assistant/agent.ts
+export const invokeAssistantAgent = async (input: string, context: AgentContext) => {
+  // Cria agente com payload específico
+  const agentExecutor = await createAssistantAgent(context.payload);
+
+  // Invoca agente
+  const result = await agentExecutor.invoke({
+    input: input, // Mensagem do usuário
+    currentDate: new Date().toISOString(), // Data atual
+    context: JSON.stringify(context), // Contexto da sessão
+  });
+
+  return result.output;
+};
+```
+
+### 4. Processamento de Tools
+
+```typescript
+// Quando o LLM decide usar uma tool
+{
+    "tool": "faq_search",
+    "toolInput": {
+        "query": "internet para usar o aplicativo"
+    },
+    "toolCallId": "call_NL7c5eKTtq3Vx2AkwJPwnS2a"
+}
+
+// A tool é executada
+const results = await searchVectors(query);
+
+// Resultado é retornado para o LLM
+"Here are some relevant FAQ entries that might help:\n\nSim, é necessário ter conexão..."
+```
+
+## ⚙️ Configurações Avançadas
+
+### 1. Agent Executor
+
+```typescript
+new AgentExecutor({
+  agent, // Agente criado
+  tools, // Tools disponíveis
+  verbose: true, // Log detalhado
+  returnIntermediateSteps: true, // Retorna passos intermediários
+  maxIterations: 12, // Máximo de iterações
+  earlyStoppingMethod: 'generate', // Para quando gera resposta
+  handleParsingErrors: true, // Trata erros de parsing
+});
+```
+
+### 2. Tratamento de Erros
+
+```typescript
+// src/agents/assistant/agent.ts
+try {
+  const result = await agentExecutor.invoke(input);
+  return result.output;
+} catch (error) {
+  if (error.message.includes('timeout')) {
+    return 'Desculpe, houve um timeout ao processar sua solicitação.';
+  }
+  if (error.message.includes('rate limit')) {
+    return 'Desculpe, estou com muitas solicitações no momento.';
+  }
+  return 'Desculpe, houve um erro interno.';
+}
+```
+
+## 📊 Monitoramento e Logging
+
+### 1. Logging Estruturado
+
+```typescript
+// Winston logger com contexto
+logger.info(`[AssistantAgent] Processing message: "${message}"`);
+logger.debug(`[AssistantAgent] Context:`, context);
+logger.info(`[AssistantAgent] Response generated successfully`);
+```
+
+### 2. Métricas de Performance
+
+```typescript
+// Token usage tracking
+{
+    "tokenUsage": {
+        "promptTokens": 2388,
+        "completionTokens": 48,
+        "totalTokens": 2436
+    },
+    "finish_reason": "stop",
+    "model_name": "gpt-4o-mini-2024-07-18"
+}
+```
+
+## 🎯 Vantagens desta Arquitetura
+
+### 1. Modularidade
+
+- Tools independentes e reutilizáveis
+- Fácil adicionar novas capacidades
+- Separação clara de responsabilidades
+
+### 2. Flexibilidade
+
+- Prompts dinâmicos baseados no contexto
+- Tools podem ser ativadas/desativadas
+- Configurações ajustáveis por ambiente
+
+### 3. Robustez
+
+- Tratamento de erros em múltiplas camadas
+- Fallbacks para falhas de tools
+- Timeout e rate limiting
+
+### 4. Observabilidade
+
+- Logging detalhado em cada etapa
+- Métricas de performance
+- Rastreamento de tokens e custos
+
+## 🔍 Exemplo Prático de Execução
+
+### Log de Execução Real
+
+```json
+{
+  "intermediateSteps": [
+    {
+      "action": {
+        "tool": "faq_search",
+        "toolInput": {
+          "query": "internet para usar o aplicativo"
+        },
+        "toolCallId": "call_NL7c5eKTtq3Vx2AkwJPwnS2a"
+      },
+      "observation": "Here are some relevant FAQ entries that might help:\n\nSim, é necessário ter conexão com a internet (Wi-Fi ou dados móveis) para fazer login, ativar o estacionamento, verificar o status das ativações e receber notificações."
+    }
+  ],
+  "output": "Sim, é necessário ter conexão com a internet (Wi-Fi ou dados móveis) para fazer login, ativar o estacionamento, verificar o status das ativações e receber notificações. Se precisar de mais alguma informação, estou à disposição!"
+}
+```
+
+### Análise do Log
+
+1. **Input**: "Preciso de internet para usar o aplicativo?"
+2. **LLM Decision**: Identificou que precisa buscar na FAQ
+3. **Tool Call**: Executou `faq_search` com query "internet para usar o aplicativo"
+4. **Tool Result**: Retornou resposta da base de conhecimento
+5. **Final Output**: Resposta final incorporando os dados da FAQ
+
+## 🚀 Melhores Práticas
+
+### 1. Design de Tools
+
+- **Nomes descritivos** e únicos
+- **Descrições claras** para o LLM entender quando usar
+- **Validação robusta** com schemas Zod
+- **Error handling** consistente
+
+### 2. Configuração de Prompts
+
+- **Instruções claras** sobre quando usar cada tool
+- **Exemplos práticos** de interação
+- **Contexto dinâmico** baseado no payload
+- **Fallbacks** para situações inesperadas
+
+### 3. Gerenciamento de Memória
+
+- **Cache inteligente** para performance
+- **Persistência** para histórico
+- **TTL apropriado** para dados temporários
+- **Fallback graceful** quando Redis não está disponível
+
+### 4. Monitoramento
+
+- **Logging estruturado** em cada etapa
+- **Métricas de performance** (tokens, tempo)
+- **Rastreamento de erros** detalhado
+- **Alertas** para falhas críticas
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

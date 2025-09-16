@@ -1,0 +1,712 @@
+---
+alwaysApply: false
+description: Guia Completo de Utils & Helpers - Utilitários e Funções Auxiliares
+---
+
+# 🔧 Guia Completo de Utils & Helpers - Utilitários e Funções Auxiliares
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para Utils e Helpers no projeto Pare Azul API Intelligence. Os Utils são **funções utilitárias puras** e **classes estáticas** para operações comuns, enquanto os Helpers são **wrappers especializados** para integrações externas e configurações específicas.
+
+## 🎯 Propósito dos Utils & Helpers
+
+### **1. Utils - Funções Utilitárias**
+
+- **Operações puras** sem efeitos colaterais
+- **Funções reutilizáveis** em toda a aplicação
+- **Classes estáticas** com métodos utilitários
+- **Validação e transformação** de dados
+
+### **2. Helpers - Wrappers Especializados**
+
+- **Configurações específicas** para serviços externos
+- **Wrappers** para bibliotecas de terceiros
+- **Instâncias pré-configuradas** para uso direto
+- **Abstração** de complexidade de integração
+
+### **3. Separação de Responsabilidades**
+
+- **Utils**: Lógica pura e reutilizável
+- **Helpers**: Configuração e integração
+- **Services**: Lógica de negócio
+- **Controllers**: Orquestração HTTP
+
+## 🏗️ Estrutura Padrão
+
+### **1. Organização de Arquivos**
+
+```
+src/
+├── 🔧 utils/                    # Utilitários puros
+│   ├── logger.util.ts           # Sistema de logging
+│   ├── validation.util.ts       # Validação e sanitização
+│   ├── http.util.ts            # Cliente HTTP genérico
+│   ├── redis.util.ts           # Operações Redis
+│   ├── crypto.util.ts          # Criptografia e IDs
+│   ├── vector-search.util.ts   # Busca vetorial
+│   ├── activation.utils.ts     # Utilitários de ativação
+│   ├── string.util.ts          # Manipulação de strings
+│   └── supabase.util.ts        # Utilitários Supabase
+└── 🛠️ helpers/                 # Helpers especializados
+    └── axiosWebservice.ts      # Cliente Axios configurado
+```
+
+### **2. Convenções de Nomenclatura**
+
+```typescript
+// ✅ UTILS: PascalCase com sufixo "Util"
+export class ValidationUtil {}
+export class CryptoUtil {}
+export class RedisUtil {}
+
+// ✅ HELPERS: camelCase descritivo
+export const axiosWebservice = axios.create({});
+export const httpClient = new HttpUtil({});
+
+// ✅ FUNÇÕES: camelCase descritivo
+export function searchVectors(query: string) {}
+export function parseActivationBody(input: ActivateVehicleParams) {}
+```
+
+## 🔧 Padrões de Utils
+
+### **1. Classe Estática**
+
+```typescript
+// src/utils/[domain].util.ts
+export class [Domain]Util {
+  /**
+   * Descrição da função
+   */
+  static [methodName](param1: type1, param2: type2): returnType {
+    // Implementação
+  }
+
+  /**
+   * Função com tratamento de erro
+   */
+  static async [asyncMethod](param: type): Promise<returnType> {
+    try {
+      // Implementação
+      return result;
+    } catch (error) {
+      logger.error('[Domain]Util error:', error);
+      return defaultValue;
+    }
+  }
+}
+```
+
+### **2. Funções Puras**
+
+```typescript
+// src/utils/[domain].utils.ts
+export function [functionName](input: InputType): OutputType {
+  // Transformação pura
+  return transformedData;
+}
+
+export async function [asyncFunction](input: InputType): Promise<OutputType> {
+  // Operação assíncrona
+  return result;
+}
+```
+
+### **3. Exemplo Implementado - ValidationUtil**
+
+```typescript
+// src/utils/validation.util.ts
+export class ValidationUtil {
+  /**
+   * Validar dados usando schema Zod
+   */
+  static validate<T>(
+    schema: z.ZodSchema<T>,
+    data: unknown
+  ): { success: true; data: T } | { success: false; errors: string[] } {
+    try {
+      const result = schema.safeParse(data);
+
+      if (result.success) {
+        return { success: true, data: result.data };
+      } else {
+        const errors = result.error.issues.map(
+          (err: any) => `${err.path.join('.')}: ${err.message}`
+        );
+        return { success: false, errors };
+      }
+    } catch (error) {
+      logger.error('Validation error:', error);
+      return { success: false, errors: ['Validation failed'] };
+    }
+  }
+
+  /**
+   * Sanitizar HTML básico (remove tags perigosas)
+   */
+  static sanitizeHtml(input: string): string {
+    return input
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '');
+  }
+
+  /**
+   * Validar email
+   */
+  static isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+}
+```
+
+## 🛠️ Padrões de Helpers
+
+### **1. Wrapper Especializado**
+
+```typescript
+// src/helpers/[service].ts
+import [library] from '[library]';
+import { logger } from '../utils/logger.util';
+import { env } from '../config/environment.config';
+
+const [service]Logger = logger.child({ service: '[Service]Helper' });
+
+const [service]Instance = [library].create({
+  // Configuração específica
+  baseURL: env.[SERVICE]_API_URL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Pareazul-Assistant-Server/1.0',
+  },
+});
+
+// Interceptors específicos
+[service]Instance.interceptors.request.use(request => {
+  // Headers específicos
+  if (!request.headers['Custom-Header']) {
+    request.headers['Custom-Header'] = 'value';
+  }
+
+  [service]Logger.debug(`Making request to: ${request.url}`);
+  return request;
+});
+
+export default [service]Instance;
+```
+
+### **2. Exemplo Implementado - AxiosWebservice**
+
+```typescript
+// src/helpers/axiosWebservice.ts
+import axios from 'axios';
+import { logger } from '../utils/logger.util';
+import { env } from '../config/environment.config';
+
+const axiosLogger = logger.child({ service: 'AxiosHelper' });
+
+const axiosWebservice = axios.create({
+  baseURL: env.PAREAZUL_API_WEBSERVICE,
+});
+
+axiosWebservice.interceptors.request.use(request => {
+  if (!request.headers['Origem-Movimento']) {
+    request.headers['Origem-Movimento'] = 'APP';
+  }
+
+  axiosLogger.debug(`Making request to: ${request.url}`);
+  return request;
+});
+
+export default axiosWebservice;
+```
+
+## 📊 Exemplos Implementados
+
+### **1. Logger Util**
+
+```typescript
+// src/utils/logger.util.ts
+import winston from 'winston';
+import { env } from '../config/environment.config';
+
+const logFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.errors({ stack: true }),
+  winston.format.json()
+);
+
+export const logger = winston.createLogger({
+  level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: logFormat,
+  defaultMeta: { service: 'pareazul-assistant-server' },
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+    }),
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+    }),
+    new winston.transports.File({
+      filename: 'logs/combined.log',
+    }),
+  ],
+});
+
+// Create logs directory if it doesn't exist
+import { mkdirSync } from 'fs';
+try {
+  mkdirSync('logs', { recursive: true });
+} catch (error) {
+  // Directory already exists
+}
+```
+
+### **2. HTTP Util**
+
+```typescript
+// src/utils/http.util.ts
+export class HttpUtil {
+  private client: AxiosInstance;
+  private retries: number;
+  private retryDelay: number;
+
+  constructor(config: HttpClientConfig = {}) {
+    this.retries = config.retries || 3;
+    this.retryDelay = config.retryDelay || 1000;
+
+    this.client = axios.create({
+      baseURL: config.baseURL,
+      timeout: config.timeout || 30000,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Pareazul-Assistant-Server/1.0',
+        ...config.headers,
+      },
+    });
+
+    this.setupInterceptors();
+  }
+
+  private setupInterceptors(): void {
+    // Request interceptor
+    this.client.interceptors.request.use(
+      config => {
+        logger.debug(`HTTP Request: ${config.method?.toUpperCase()} ${config.url}`, {
+          headers: config.headers,
+          data: config.data,
+        });
+        return config;
+      },
+      error => {
+        logger.error('HTTP Request Error:', error);
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor with retry logic
+    this.client.interceptors.response.use(
+      response => {
+        logger.debug(`HTTP Response: ${response.status} ${response.config.url}`, {
+          status: response.status,
+          headers: response.headers,
+          data: response.data,
+        });
+        return response;
+      },
+      async error => {
+        const config = error.config;
+
+        // Retry logic
+        if (config && !config._retry && this.shouldRetry(error)) {
+          config._retry = true;
+          config._retryCount = (config._retryCount || 0) + 1;
+
+          if (config._retryCount <= this.retries) {
+            logger.warn(
+              `HTTP Retry attempt ${config._retryCount}/${this.retries} for ${config.url}`
+            );
+
+            await this.delay(this.retryDelay * config._retryCount);
+            return this.client(config);
+          }
+        }
+
+        logger.error('HTTP Response Error:', {
+          url: error.config?.url,
+          method: error.config?.method,
+          status: error.response?.status,
+          message: error.message,
+          data: error.response?.data,
+        });
+
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  // HTTP Methods
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.get(url, config);
+  }
+
+  async post<T = any>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<AxiosResponse<T>> {
+    return this.client.post(url, data, config);
+  }
+}
+
+// Default instance for general use
+export const httpClient = new HttpUtil();
+
+// Factory for creating specialized clients
+export const createHttpClient = (config: HttpClientConfig): HttpUtil => {
+  return new HttpUtil(config);
+};
+```
+
+### **3. Redis Util**
+
+```typescript
+// src/utils/redis.util.ts
+export class RedisUtil {
+  // Session operations
+  static async setSession(key: string, value: any, ttl: number = 3600): Promise<boolean> {
+    try {
+      await redis.setEx(key, ttl, JSON.stringify(value));
+      return true;
+    } catch (error) {
+      logger.error('Redis setSession error:', error);
+      return false;
+    }
+  }
+
+  static async getSession(key: string): Promise<any | null> {
+    try {
+      const value = await redis.get(key);
+      return value ? JSON.parse(value) : null;
+    } catch (error) {
+      logger.error('Redis getSession error:', error);
+      return null;
+    }
+  }
+
+  // Memory buffer operations
+  static async pushToBuffer(key: string, message: any, maxLength: number = 20): Promise<boolean> {
+    try {
+      await redis.lPush(key, JSON.stringify(message));
+      await redis.lTrim(key, 0, maxLength - 1);
+      await redis.expire(key, 3600); // 1 hour TTL
+      return true;
+    } catch (error) {
+      logger.error('Redis pushToBuffer error:', error);
+      return false;
+    }
+  }
+
+  static async getBuffer(key: string, limit: number = 10): Promise<any[]> {
+    try {
+      const messages = await redis.lRange(key, 0, limit - 1);
+      return messages.map(msg => JSON.parse(msg));
+    } catch (error) {
+      logger.error('Redis getBuffer error:', error);
+      return [];
+    }
+  }
+
+  // Health check
+  static async ping(): Promise<boolean> {
+    try {
+      const result = await redis.ping();
+      return result === 'PONG';
+    } catch (error) {
+      logger.error('Redis ping error:', error);
+      return false;
+    }
+  }
+}
+```
+
+### **4. Vector Search Util**
+
+```typescript
+// src/utils/vector-search.util.ts
+export async function searchVectors(query: string): Promise<string> {
+  try {
+    logger.info(`[VectorSearch] Searching for: "${query}"`);
+
+    // Gera embedding da query
+    const embeddingResponse = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: query,
+    });
+
+    const embedding = embeddingResponse.data[0].embedding;
+
+    // Consulta no Supabase usando a função RPC
+    const { data, error } = await supabaseAdmin.rpc('match_faq', {
+      query_embedding: embedding,
+      match_threshold: 0.75,
+      match_count: 3,
+    });
+
+    if (error) {
+      logger.error('[VectorSearch] Error in RPC call:', error);
+      return '';
+    }
+
+    if (!data || data.length === 0) {
+      logger.info('[VectorSearch] No matching results found');
+      return '';
+    }
+
+    const results = data.map((d: any) => d.answer).join('\n\n');
+    logger.info(`[VectorSearch] Found ${data.length} matching results`);
+
+    return results;
+  } catch (error) {
+    logger.error('[VectorSearch] Error searching vectors:', error);
+    return '';
+  }
+}
+```
+
+## 🎯 Melhores Práticas
+
+### **1. Nomenclatura**
+
+```typescript
+// ✅ BOM: Nomes descritivos e consistentes
+export class ValidationUtil {}
+export class CryptoUtil {}
+export class RedisUtil {}
+
+// ❌ RUIM: Nomes genéricos ou inconsistentes
+export class Utils {}
+export class Helper {}
+export class Common {}
+```
+
+### **2. Organização**
+
+```typescript
+// ✅ BOM: Agrupamento por funcionalidade
+export class ValidationUtil {
+  static validate() {}
+  static sanitize() {}
+  static isValidEmail() {}
+}
+
+// ❌ RUIM: Mistura de funcionalidades
+export class ValidationUtil {
+  static validate() {}
+  static hash() {}
+  static sendEmail() {}
+}
+```
+
+### **3. Error Handling**
+
+```typescript
+// ✅ BOM: Error handling consistente
+static async method(): Promise<boolean> {
+  try {
+    // Implementação
+    return true;
+  } catch (error) {
+    logger.error('Method error:', error);
+    return false;
+  }
+}
+
+// ❌ RUIM: Sem tratamento de erro
+static async method(): Promise<any> {
+  // Implementação sem try/catch
+  return result;
+}
+```
+
+### **4. Logging**
+
+```typescript
+// ✅ BOM: Logging estruturado
+logger.info(`[VectorSearch] Searching for: "${query}"`);
+logger.error('[VectorSearch] Error in RPC call:', error);
+
+// ❌ RUIM: Logging genérico
+console.log('Searching...');
+console.error('Error');
+```
+
+### **5. Configuração**
+
+```typescript
+// ✅ BOM: Configuração centralizada
+const axiosWebservice = axios.create({
+  baseURL: env.PAREAZUL_API_WEBSERVICE,
+});
+
+// ❌ RUIM: Configuração hardcoded
+const axiosWebservice = axios.create({
+  baseURL: 'https://api.example.com',
+});
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Utils**
+
+```
+Service/Controller → Util Method → Pure Function → Result
+```
+
+### **2. Helpers**
+
+```
+Service/Controller → Helper Instance → External Service → Response
+```
+
+### **3. Error Flow**
+
+```
+Util/Helper → Error Handling → Logging → Fallback Value
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Reutilização**
+
+- **Funções puras** reutilizáveis
+- **Classes estáticas** sem instanciação
+- **Configurações** centralizadas
+
+### **2. Manutenibilidade**
+
+- **Separação clara** de responsabilidades
+- **Código limpo** e testável
+- **Error handling** consistente
+
+### **3. Testabilidade**
+
+- **Funções puras** fáceis de testar
+- **Dependency injection** clara
+- **Mocking** simplificado
+
+### **4. Performance**
+
+- **Instâncias reutilizáveis** de helpers
+- **Configuração otimizada** de clientes
+- **Caching** inteligente
+
+## 📈 Recomendações de Melhoria
+
+### **1. Base Util Class**
+
+```typescript
+// src/utils/base.util.ts
+export abstract class BaseUtil {
+  protected static logger = logger.child({ util: this.constructor.name });
+
+  protected static handleError(error: unknown, context: string): void {
+    this.logger.error(`${context}:`, error);
+  }
+
+  protected static validateInput<T>(input: T, validator: (input: T) => boolean): T {
+    if (!validator(input)) {
+      throw new Error(`Invalid input: ${JSON.stringify(input)}`);
+    }
+    return input;
+  }
+}
+```
+
+### **2. Util Factory**
+
+```typescript
+// src/utils/util.factory.ts
+export class UtilFactory {
+  static createHttpClient(config: HttpClientConfig): HttpUtil {
+    return new HttpUtil(config);
+  }
+
+  static createRedisClient(config: RedisConfig): RedisUtil {
+    return new RedisUtil(config);
+  }
+
+  static createLogger(service: string): winston.Logger {
+    return logger.child({ service });
+  }
+}
+```
+
+### **3. Helper Registry**
+
+```typescript
+// src/helpers/registry.ts
+export class HelperRegistry {
+  private static instances = new Map<string, any>();
+
+  static register<T>(name: string, instance: T): void {
+    this.instances.set(name, instance);
+  }
+
+  static get<T>(name: string): T {
+    const instance = this.instances.get(name);
+    if (!instance) {
+      throw new Error(`Helper ${name} not found`);
+    }
+    return instance;
+  }
+
+  static has(name: string): boolean {
+    return this.instances.has(name);
+  }
+}
+```
+
+### **4. Util Testing**
+
+```typescript
+// src/utils/__tests__/validation.util.test.ts
+describe('ValidationUtil', () => {
+  describe('validate', () => {
+    it('should validate data successfully', () => {
+      const schema = z.object({ name: z.string() });
+      const data = { name: 'test' };
+
+      const result = ValidationUtil.validate(schema, data);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(data);
+    });
+
+    it('should return errors for invalid data', () => {
+      const schema = z.object({ name: z.string() });
+      const data = { name: 123 };
+
+      const result = ValidationUtil.validate(schema, data);
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toHaveLength(1);
+    });
+  });
+});
+```
+
+## 🎯 Conclusão
+
+A arquitetura de Utils & Helpers no projeto está bem estruturada e segue padrões consistentes. O uso de **classes estáticas** para utils, **wrappers especializados** para helpers, **error handling** robusto e **logging estruturado** garante código limpo, reutilizável e maintível.
+
+As principais melhorias seriam implementar **Base Util Class**, **Util Factory**, **Helper Registry** e **testes automatizados** para tornar o sistema ainda mais robusto e consistente.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

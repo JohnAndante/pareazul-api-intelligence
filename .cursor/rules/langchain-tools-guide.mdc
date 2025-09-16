@@ -1,0 +1,417 @@
+---
+alwaysApply: false
+description: Guia Completo de Tools LangChain
+---
+
+# 🛠️ Guia Completo de Tools LangChain
+
+## 📋 Resumo Executivo
+
+Este documento descreve o sistema completo de tools LangChain implementado no projeto Pare Azul API Intelligence. As tools são ferramentas que permitem ao agente IA interagir com sistemas externos, executar operações específicas e acessar dados em tempo real.
+
+## 🎯 Tipos de Tools LangChain
+
+### **1. DynamicStructuredTool (Usado no projeto)**
+
+```typescript
+// src/tools/faq.tool.ts
+export const faqSearchTool = new DynamicStructuredTool({
+  name: 'faq_search',
+  description: 'Search for frequently asked questions...',
+  schema: FaqSearchSchema, // Schema Zod obrigatório
+  func: async ({ query }) => {
+    // Lógica da tool
+    const results = await searchVectors(query);
+    return results || 'No relevant FAQ entries found.';
+  },
+});
+```
+
+**Características:**
+
+- **Validação automática** com schemas Zod
+- **Type safety** completo
+- **Entrada estruturada** (objeto tipado)
+- **Ideal para** tools complexas com múltiplos parâmetros
+
+### **2. DynamicTool (Versão mais simples)**
+
+```typescript
+// Exemplo de DynamicTool
+const simpleTool = new DynamicTool({
+  name: 'simple_calculator',
+  description: 'Performs basic math operations',
+  func: async (input: string) => {
+    // Recebe string e precisa fazer parse manual
+    const { operation, a, b } = JSON.parse(input);
+    return performCalculation(operation, a, b);
+  },
+});
+```
+
+**Características:**
+
+- **Entrada como string** (precisa fazer parse manual)
+- **Menos validação** automática
+- **Mais flexível** para casos simples
+- **Ideal para** tools básicas
+
+### **3. Tool (Interface base)**
+
+```typescript
+// Interface base que todas as tools implementam
+interface Tool {
+  name: string;
+  description: string;
+  func: (input: any) => Promise<string>;
+}
+```
+
+## 🔧 Composição e Dependências
+
+### **1. Estrutura de uma Tool**
+
+```typescript
+// Componentes obrigatórios
+interface ToolStructure {
+  name: string; // Nome único (usado pelo LLM)
+  description: string; // Descrição para o LLM entender quando usar
+  schema?: ZodSchema; // Validação de entrada (apenas DynamicStructuredTool)
+  func: Function; // Lógica de execução
+}
+```
+
+### **2. Dependências no projeto**
+
+```typescript
+// src/tools/faq.tool.ts
+import { DynamicStructuredTool } from '@langchain/core/tools';
+import { z } from 'zod';
+import { searchVectors } from '../utils/vector-search.util';
+import { logger } from '../utils/logger.util';
+
+// Dependências:
+// - @langchain/core/tools (LangChain)
+// - zod (validação)
+// - Utils internos (lógica de negócio)
+```
+
+### **3. Hierarquia de Dependências**
+
+```
+Tool
+├── LangChain Core Tools
+├── Zod (validação)
+├── Utils (lógica de negócio)
+├── Services (camada de negócio)
+├── APIs (integrações externas)
+└── Database (persistência)
+```
+
+## 🎯 Como as Tools são Usadas
+
+### **1. Seleção pelo LLM**
+
+```typescript
+// O LLM analisa o input e decide qual tool usar
+const userInput = "Preciso de internet para usar o aplicativo?";
+
+// LLM processa e decide:
+{
+    "tool": "faq_search",
+    "toolInput": {
+        "query": "internet para usar o aplicativo"
+    }
+}
+```
+
+### **2. Processo de Execução**
+
+```typescript
+// 1. LLM identifica necessidade de tool
+// 2. Seleciona tool baseada na descrição
+// 3. Chama tool com parâmetros validados
+// 4. Tool executa lógica de negócio
+// 5. Retorna resultado para LLM
+// 6. LLM incorpora resultado na resposta final
+```
+
+### **3. Validação Automática**
+
+```typescript
+// DynamicStructuredTool valida automaticamente
+const FaqSearchSchema = z.object({
+  query: z.string().describe('The question to search for'),
+});
+
+// Se input inválido, tool retorna erro antes da execução
+```
+
+## 🏗️ Onde está a Lógica das Tools
+
+### **1. Estrutura no projeto**
+
+```
+src/tools/
+├── index.ts              # Agregação de todas as tools
+├── faq.tool.ts          # Tool de busca vetorial
+├── database.tool.ts     # Tools de banco de dados
+└── activation.tools.ts  # Tools de ativação
+```
+
+### **2. Lógica de Negócio**
+
+```typescript
+// src/tools/faq.tool.ts
+export const faqSearchTool = new DynamicStructuredTool({
+  name: 'faq_search',
+  description: 'Search for frequently asked questions...',
+  schema: FaqSearchSchema,
+  func: async ({ query }) => {
+    // LÓGICA AQUI:
+    // 1. Chama utility de busca vetorial
+    // 2. Processa resultados
+    // 3. Retorna resposta formatada
+    const results = await searchVectors(query);
+    return results || 'No relevant FAQ entries found.';
+  },
+});
+```
+
+### **3. Separação de Responsabilidades**
+
+```typescript
+// Tool = Interface + Validação
+// Service = Lógica de negócio
+// Util = Operações específicas
+// API = Integrações externas
+
+// Exemplo:
+Tool (faq.tool.ts) → Util (vector-search.util.ts) → Service (memory.service.ts) → API (Supabase)
+```
+
+## 🔗 Como Associar Tools ao Agente
+
+### **1. Agregação de Tools**
+
+```typescript
+// src/tools/index.ts
+export function createAllTools() {
+  return [
+    ...activationTools, // Tools de ativação
+    ...databaseTools, // Tools de banco
+    ...faqTools, // Tools de FAQ
+  ];
+}
+```
+
+### **2. Associação ao Agente**
+
+```typescript
+// src/agents/assistant/agent.ts
+export const createAssistantAgent = async (payload: any) => {
+  const tools = createAllTools(); // Pega todas as tools
+
+  const agent = await createOpenAIToolsAgent({
+    llm,
+    tools, // Passa tools para o agente
+    prompt: promptTemplate,
+  });
+
+  return new AgentExecutor({
+    agent,
+    tools, // Mesmas tools para o executor
+    // ... outras configurações
+  });
+};
+```
+
+### **3. Disponibilidade no Prompt**
+
+```typescript
+// src/agents/assistant/prompt.ts
+// O prompt deve mencionar as tools disponíveis
+const systemPrompt = `
+You have access to these tools:
+- faq_search: Search the knowledge base
+- get_user_info: Get user information
+- checkVehicleCurrentActivations: Check vehicle activations
+// ... outras tools
+`;
+```
+
+## 📊 Comparação de Tipos de Tools
+
+| Característica   | DynamicStructuredTool | DynamicTool | Tool Custom |
+| ---------------- | --------------------- | ----------- | ----------- |
+| **Validação**    | Automática (Zod)      | Manual      | Manual      |
+| **Type Safety**  | Completo              | Parcial     | Nenhum      |
+| **Entrada**      | Objeto tipado         | String      | Qualquer    |
+| **Complexidade** | Alta                  | Média       | Baixa       |
+| **Manutenção**   | Fácil                 | Média       | Difícil     |
+| **Performance**  | Boa                   | Boa         | Variável    |
+
+## 🎯 Melhores Práticas para Tools
+
+### **1. Design de Tools**
+
+```typescript
+// ✅ BOM: Nome descritivo e único
+name: 'faq_search';
+
+// ❌ RUIM: Nome genérico
+name: 'search';
+
+// ✅ BOM: Descrição clara para o LLM
+description: 'Search for frequently asked questions and answers in the knowledge base using vector similarity';
+
+// ❌ RUIM: Descrição vaga
+description: 'Search stuff';
+```
+
+### **2. Validação Robusta**
+
+```typescript
+// ✅ BOM: Schema detalhado
+const FaqSearchSchema = z.object({
+  query: z
+    .string()
+    .min(1, 'Query cannot be empty')
+    .max(500, 'Query too long')
+    .describe('The question to search for'),
+});
+
+// ❌ RUIM: Schema básico
+const BasicSchema = z.object({
+  query: z.string(),
+});
+```
+
+### **3. Error Handling**
+
+```typescript
+// ✅ BOM: Tratamento de erros robusto
+func: async ({ query }) => {
+  try {
+    const results = await searchVectors(query);
+    return results || 'No relevant FAQ entries found.';
+  } catch (error) {
+    logger.error('[FaqTool] Error:', error);
+    return 'I encountered an error while searching. Please try again.';
+  }
+};
+
+// ❌ RUIM: Sem tratamento de erros
+func: async ({ query }) => {
+  const results = await searchVectors(query);
+  return results;
+};
+```
+
+## 🔄 Fluxo de Execução das Tools
+
+### **1. Ciclo de Vida**
+
+```
+1. LLM analisa input
+2. Identifica necessidade de tool
+3. Seleciona tool apropriada
+4. Valida parâmetros (se DynamicStructuredTool)
+5. Executa função da tool
+6. Processa resultado
+7. Incorpora na resposta final
+```
+
+### **2. Logs de Execução**
+
+```json
+{
+  "action": {
+    "tool": "faq_search",
+    "toolInput": {
+      "query": "internet para usar o aplicativo"
+    },
+    "toolCallId": "call_NL7c5eKTtq3Vx2AkwJPwnS2a"
+  },
+  "observation": "Here are some relevant FAQ entries that might help:\n\nSim, é necessário ter conexão..."
+}
+```
+
+## 🚀 Vantagens da Arquitetura Atual
+
+### **1. Modularidade**
+
+- Tools independentes e reutilizáveis
+- Fácil adicionar novas capacidades
+- Separação clara de responsabilidades
+
+### **2. Type Safety**
+
+- Validação automática com Zod
+- IntelliSense completo
+- Detecção de erros em tempo de compilação
+
+### **3. Manutenibilidade**
+
+- Código organizado e documentado
+- Fácil debugging e testing
+- Evolução independente de cada tool
+
+### **4. Performance**
+
+- Validação eficiente
+- Cache inteligente
+- Execução otimizada
+
+## 📈 Recomendações de Melhoria
+
+### **1. Tool Registry**
+
+```typescript
+// Criar um registry centralizado de tools
+class ToolRegistry {
+  private tools = new Map();
+
+  register(tool: Tool) {
+    this.tools.set(tool.name, tool);
+  }
+
+  get(name: string) {
+    return this.tools.get(name);
+  }
+}
+```
+
+### **2. Tool Metrics**
+
+```typescript
+// Adicionar métricas de uso das tools
+interface ToolMetrics {
+  name: string;
+  callCount: number;
+  averageExecutionTime: number;
+  errorRate: number;
+}
+```
+
+### **3. Tool Testing**
+
+```typescript
+// Testes unitários para cada tool
+describe('FaqSearchTool', () => {
+  it('should search FAQ successfully', async () => {
+    const result = await faqSearchTool.func({ query: 'test' });
+    expect(result).toContain('relevant FAQ entries');
+  });
+});
+```
+
+## 🎯 Conclusão
+
+A arquitetura de tools no projeto está muito bem estruturada e segue as melhores práticas do LangChain. O uso de `DynamicStructuredTool` com validação Zod garante type safety e robustez, enquanto a separação clara de responsabilidades facilita manutenção e evolução.
+
+As principais melhorias seriam implementar um **Tool Registry** centralizado, adicionar **métricas de uso** e criar **testes automatizados** para cada tool.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

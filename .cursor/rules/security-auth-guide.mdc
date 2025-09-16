@@ -1,0 +1,894 @@
+---
+alwaysApply: false
+description: Guia Completo de Security & Auth - Segurança e Autenticação
+---
+
+# 🔐 Guia Completo de Security & Auth - Segurança e Autenticação
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para Security & Auth no projeto Pare Azul API Intelligence. O sistema implementa **múltiplas camadas de segurança** incluindo autenticação baseada em headers, rate limiting, CORS, sanitização de dados e detecção de ataques, garantindo robustez e proteção contra vulnerabilidades comuns.
+
+## 🎯 Propósito da Security & Auth
+
+### **1. Autenticação e Autorização**
+
+- **Autenticação** baseada em headers (compatível com n8n)
+- **Autorização** granular por endpoint
+- **Validação de tokens** customizável
+- **Extração de user ID** de múltiplas fontes
+
+### **2. Proteção de Segurança**
+
+- **Headers de segurança** com Helmet
+- **Rate limiting** com Redis
+- **CORS** configurável por ambiente
+- **Detecção de ataques** (SQL Injection, XSS, Path Traversal)
+
+### **3. Monitoramento e Logging**
+
+- **Logging estruturado** de eventos de segurança
+- **Request tracking** com IDs únicos
+- **Métricas de segurança** e alertas
+- **Auditoria** de ações sensíveis
+
+## 🏗️ Estrutura Padrão
+
+### **1. Organização de Arquivos**
+
+```
+src/
+├── 🛡️ middleware/               # Middlewares de segurança
+│   ├── auth.middleware.ts       # Autenticação e autorização
+│   ├── security.middleware.ts   # Headers de segurança
+│   ├── rate-limit.middleware.ts # Rate limiting
+│   ├── cors.middleware.ts       # CORS configuration
+│   └── validation.middleware.ts # Validação de entrada
+├── 🔧 utils/                   # Utilitários de segurança
+│   ├── crypto.util.ts          # Criptografia e IDs
+│   └── validation.util.ts      # Sanitização de dados
+└── 📝 types/                   # Tipos de segurança
+    └── auth.types.ts           # Interfaces de autenticação
+```
+
+### **2. Convenções de Nomenclatura**
+
+```typescript
+// ✅ MIDDLEWARE: camelCase descritivo
+export const createAuthMiddleware = config => {};
+export const basicSecurity = helmet({});
+export const ipRateLimit = createRateLimit({});
+
+// ✅ CONFIG: PascalCase com sufixo "Config"
+export interface AuthMiddlewareConfig {}
+export interface RateLimitConfig {}
+export interface CorsConfig {}
+
+// ✅ TYPES: PascalCase com sufixo descritivo
+export interface AuthenticatedRequest extends Request {}
+export interface SecurityEvent {}
+```
+
+## 🔐 Padrões de Autenticação
+
+### **1. Middleware de Autenticação**
+
+```typescript
+// src/middleware/auth.middleware.ts
+export interface AuthMiddlewareConfig {
+  headerName?: string;
+  requiredAuth?: boolean;
+  validateToken?: (token: string) => Promise<any>;
+}
+
+export const createAuthMiddleware = (config: AuthMiddlewareConfig = {}) => {
+  const { headerName = 'authorization', requiredAuth = true, validateToken } = config;
+
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const authHeader = req.headers[headerName.toLowerCase()] as string;
+
+      if (!authHeader) {
+        if (requiredAuth) {
+          logger.warn('Missing authorization header', {
+            ip: req.ip,
+            path: req.path,
+            method: req.method,
+          });
+
+          return res.status(401).json({
+            error: 'Authorization header required',
+            code: 'MISSING_AUTH_HEADER',
+          });
+        } else {
+          return next();
+        }
+      }
+
+      // Extrair token (suporte a Bearer token ou token direto)
+      let token = authHeader;
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+
+      // Validação customizada do token (se fornecida)
+      if (validateToken) {
+        try {
+          const user = await validateToken(token);
+          req.user = user;
+
+          logger.debug('User authenticated', {
+            userId: user?.id,
+            path: req.path,
+            method: req.method,
+          });
+        } catch (error) {
+          logger.warn('Token validation failed', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            ip: req.ip,
+            path: req.path,
+            method: req.method,
+          });
+
+          return res.status(401).json({
+            error: 'Invalid authentication token',
+            code: 'INVALID_TOKEN',
+          });
+        }
+      }
+
+      next();
+    } catch (error) {
+      logger.error('Auth middleware error:', error);
+      return res.status(500).json({
+        error: 'Authentication error',
+        code: 'AUTH_ERROR',
+      });
+    }
+  };
+};
+```
+
+### **2. Middlewares Pré-configurados**
+
+```typescript
+// Autenticação obrigatória
+export const simpleAuth = createAuthMiddleware({
+  headerName: 'authorization',
+  requiredAuth: true,
+});
+
+// Autenticação opcional
+export const optionalAuth = createAuthMiddleware({
+  headerName: 'authorization',
+  requiredAuth: false,
+});
+
+// Verificação de autenticação
+export const requireAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED',
+    });
+  }
+  next();
+};
+
+// Extração de user ID
+export const extractUserId = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    // Prioridade: req.user.id > authorization header > body.userId > query.userId
+    let userId: string | null = null;
+
+    if (req.user?.id) {
+      userId = req.user.id;
+    } else if (req.headers.authorization) {
+      userId = req.headers.authorization.replace('Bearer ', '');
+    } else if (req.body?.userId) {
+      userId = req.body.userId;
+    } else if (req.query?.userId) {
+      userId = req.query.userId as string;
+    }
+
+    if (userId) {
+      req.user = { ...req.user, id: userId };
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Extract userId error:', error);
+    next();
+  }
+};
+```
+
+## 🛡️ Padrões de Segurança
+
+### **1. Headers de Segurança**
+
+```typescript
+// src/middleware/security.middleware.ts
+export const basicSecurity = helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  hsts: {
+    maxAge: 31536000, // 1 ano
+    includeSubDomains: true,
+    preload: true,
+  },
+});
+
+export const customSecurityHeaders = (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+  next();
+};
+```
+
+### **2. Detecção de Ataques**
+
+```typescript
+export const attackDetection = (req: Request, res: Response, next: NextFunction) => {
+  const suspicious = [];
+
+  // Detectar SQL Injection
+  const sqlPatterns = /(union|select|insert|delete|update|drop|create|alter|exec|script)/i;
+  if (sqlPatterns.test(req.url) || sqlPatterns.test(JSON.stringify(req.body))) {
+    suspicious.push('SQL_INJECTION');
+  }
+
+  // Detectar XSS
+  const xssPatterns = /(<script|javascript:|on\w+\s*=)/i;
+  if (xssPatterns.test(req.url) || xssPatterns.test(JSON.stringify(req.body))) {
+    suspicious.push('XSS_ATTEMPT');
+  }
+
+  // Detectar Path Traversal
+  const pathTraversalPatterns = /(\.\.|\/etc\/|\/proc\/|\/var\/)/i;
+  if (pathTraversalPatterns.test(req.url)) {
+    suspicious.push('PATH_TRAVERSAL');
+  }
+
+  if (suspicious.length > 0) {
+    logger.warn('Suspicious request detected', {
+      ip: req.ip,
+      method: req.method,
+      url: req.url,
+      userAgent: req.get('User-Agent'),
+      attacks: suspicious,
+      requestId: (req as any).requestId,
+    });
+
+    // Em produção, bloquear requests suspeitas
+    if (process.env.NODE_ENV === 'production' && process.env.BLOCK_ATTACKS === 'true') {
+      return res.status(403).json({
+        error: 'Suspicious request blocked',
+        code: 'SECURITY_VIOLATION',
+      });
+    }
+  }
+
+  next();
+};
+```
+
+### **3. Request Tracking**
+
+```typescript
+export const requestId = (req: Request, res: Response, next: NextFunction) => {
+  const requestId = (req.headers['x-request-id'] as string) || CryptoUtil.generateUUID();
+
+  (req as any).requestId = requestId;
+  res.setHeader('X-Request-ID', requestId);
+
+  next();
+};
+
+export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
+  const start = Date.now();
+  const requestId = (req as any).requestId;
+
+  // Log da request
+  logger.info('Request started', {
+    requestId,
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    contentType: req.get('Content-Type'),
+    contentLength: req.get('Content-Length'),
+    userId: (req as any).user?.id,
+  });
+
+  // Hook para log da response
+  const originalSend = res.send;
+  res.send = function (body: any) {
+    const duration = Date.now() - start;
+
+    logger.info('Request completed', {
+      requestId,
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      contentLength: res.get('Content-Length'),
+      userId: (req as any).user?.id,
+    });
+
+    return originalSend.call(this, body);
+  };
+
+  next();
+};
+```
+
+## ⚡ Padrões de Rate Limiting
+
+### **1. Rate Limiter Configurável**
+
+```typescript
+// src/middleware/rate-limit.middleware.ts
+export interface RateLimitConfig {
+  windowMs?: number;
+  max?: number;
+  keyGenerator?: (req: Request) => string;
+  skipFailedRequests?: boolean;
+  skipSuccessfulRequests?: boolean;
+  message?: string;
+  headers?: boolean;
+}
+
+export const createRateLimit = (config: RateLimitConfig = {}) => {
+  const {
+    windowMs = 15 * 60 * 1000, // 15 minutos
+    max = 100, // 100 requests por janela
+    keyGenerator,
+    skipFailedRequests = false,
+    skipSuccessfulRequests = false,
+    message = 'Too many requests, please try again later',
+    headers = true,
+  } = config;
+
+  return rateLimit({
+    windowMs,
+    max,
+    message: {
+      error: message,
+      code: 'RATE_LIMIT_EXCEEDED',
+      retryAfter: Math.ceil(windowMs / 1000),
+    },
+    keyGenerator: keyGenerator || ((req: Request) => ipKeyGenerator(req.ip || '127.0.0.1')),
+    skipFailedRequests,
+    skipSuccessfulRequests,
+    standardHeaders: headers,
+    legacyHeaders: false,
+    // Store usando Redis com fallback para memória
+    store: {
+      incr: async (key: string) => {
+        try {
+          const redisKey = `rate_limit:${key}`;
+          const current = await redis.incr(redisKey);
+
+          if (current === 1) {
+            await redis.expire(redisKey, Math.ceil(windowMs / 1000));
+          }
+
+          return {
+            totalHits: current,
+            resetTime: new Date(Date.now() + windowMs),
+          };
+        } catch (error) {
+          logger.warn('Rate limit Redis unavailable, using memory fallback:', error);
+          return {
+            totalHits: 1,
+            resetTime: new Date(Date.now() + windowMs),
+          };
+        }
+      },
+      // ... outros métodos do store
+    },
+    handler: (req: Request, res: Response) => {
+      logger.warn('Rate limit exceeded', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+        userAgent: req.get('User-Agent'),
+        userId: (req as any).user?.id,
+      });
+
+      res.status(429).json({
+        error: message,
+        code: 'RATE_LIMIT_EXCEEDED',
+        retryAfter: Math.ceil(windowMs / 1000),
+        timestamp: new Date().toISOString(),
+      });
+    },
+  });
+};
+```
+
+### **2. Rate Limiters Pré-configurados**
+
+```typescript
+// Rate limit por IP (padrão)
+export const ipRateLimit = createRateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // 100 requests por IP
+  message: 'Too many requests from this IP',
+});
+
+// Rate limit por usuário autenticado
+export const userRateLimit = createRateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 200, // 200 requests por usuário
+  keyGenerator: req => (req as any).user?.id || req.ip,
+  message: 'Too many requests from this user',
+});
+
+// Rate limit rigoroso para APIs sensíveis
+export const strictRateLimit = createRateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutos
+  max: 10, // 10 requests por janela
+  message: 'Rate limit exceeded for sensitive endpoint',
+});
+
+// Rate limit dinâmico baseado em tipo de usuário
+export const dynamicRateLimit = (req: Request, res: Response, next: NextFunction) => {
+  const user = (req as any).user;
+
+  let config: RateLimitConfig = {
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+  };
+
+  if (user?.type === 'premium') {
+    config.max = 500;
+  } else if (user?.type === 'api') {
+    config.max = 1000;
+  }
+
+  const limitMiddleware = createRateLimit(config);
+  limitMiddleware(req, res, next);
+};
+```
+
+## 🌐 Padrões de CORS
+
+### **1. CORS Configurável**
+
+```typescript
+// src/middleware/cors.middleware.ts
+export interface CorsConfig {
+  origins?: string[] | string;
+  credentials?: boolean;
+  methods?: string[];
+  allowedHeaders?: string[];
+  exposedHeaders?: string[];
+  maxAge?: number;
+}
+
+export const createCorsMiddleware = (config: CorsConfig = {}) => {
+  const {
+    origins = process.env.CORS_ORIGINS?.split(',') || ['http://localhost:3000'],
+    credentials = true,
+    methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders = ['Content-Type', 'Authorization', 'X-Requested-With'],
+    exposedHeaders = ['X-Total-Count', 'X-Page-Count'],
+    maxAge = 86400, // 24 horas
+  } = config;
+
+  const corsOptions: CorsOptions = {
+    origin: (origin, callback) => {
+      // Permitir requests sem origin (mobile apps, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Verificar se origin está na lista permitida
+      const allowedOrigins = Array.isArray(origins) ? origins : [origins];
+
+      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn('CORS blocked origin:', { origin, allowedOrigins });
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials,
+    methods,
+    allowedHeaders,
+    exposedHeaders,
+    maxAge,
+    optionsSuccessStatus: 200,
+  };
+
+  return cors(corsOptions);
+};
+```
+
+### **2. CORS Pré-configurados**
+
+```typescript
+// CORS permissivo para desenvolvimento
+export const devCors = createCorsMiddleware({
+  origins: '*',
+  credentials: true,
+});
+
+// CORS restritivo para produção
+export const prodCors = createCorsMiddleware({
+  origins: process.env.CORS_ORIGINS?.split(',') || [],
+  credentials: true,
+});
+
+// CORS para APIs públicas
+export const publicApiCors = createCorsMiddleware({
+  origins: '*',
+  credentials: false,
+  methods: ['GET', 'POST'],
+});
+
+// CORS padrão baseado no ambiente
+export const defaultCors = process.env.NODE_ENV === 'production' ? prodCors : devCors;
+```
+
+## 📊 Exemplos Implementados
+
+### **1. Aplicação de Middlewares**
+
+```typescript
+// src/routes/assistant.route.ts
+import { Router } from 'express';
+import { assistantController } from '../controllers/assistant.controller';
+import { simpleAuth, ipRateLimit, defaultCors } from '../middleware';
+
+const router = Router();
+
+// Aplicar middlewares de segurança
+router.use(defaultCors);
+router.use(ipRateLimit);
+router.use(simpleAuth);
+
+// Rotas protegidas
+router.post('/message', assistantController.processMessage);
+router.post('/webhook', assistantController.webhook);
+router.get('/health', assistantController.health);
+
+export default router;
+```
+
+### **2. Validação de Entrada**
+
+```typescript
+// src/middleware/validation.middleware.ts
+export const validateRequest = (schema: z.ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validated = schema.parse(req.body);
+      req.body = validated;
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        logger.warn('Validation error:', {
+          errors: error.errors,
+          body: req.body,
+          ip: req.ip,
+          userId: (req as any).user?.id,
+        });
+
+        return res.status(400).json({
+          error: 'Invalid request data',
+          code: 'VALIDATION_ERROR',
+          details: error.errors,
+        });
+      }
+
+      logger.error('Validation middleware error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        code: 'VALIDATION_ERROR',
+      });
+    }
+  };
+};
+```
+
+### **3. Sanitização de Dados**
+
+```typescript
+// src/utils/validation.util.ts
+export class ValidationUtil {
+  /**
+   * Sanitizar HTML básico (remove tags perigosas)
+   */
+  static sanitizeHtml(input: string): string {
+    return input
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '');
+  }
+
+  /**
+   * Validar e sanitizar entrada de texto
+   */
+  static sanitizeText(input: string, maxLength: number = 1000): string {
+    if (!input || typeof input !== 'string') {
+      return '';
+    }
+
+    return input
+      .trim()
+      .substring(0, maxLength)
+      .replace(/[\u0000-\u001f\u007f-\u009f]/g, '') // Remove control characters
+      .replace(/\s+/g, ' '); // Normalize whitespace
+  }
+
+  /**
+   * Validar email
+   */
+  static isValidEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+}
+```
+
+## 🎯 Melhores Práticas
+
+### **1. Configuração de Ambiente**
+
+```typescript
+// ✅ BOM: Configuração baseada em ambiente
+export const defaultCors = process.env.NODE_ENV === 'production' ? prodCors : devCors;
+
+// ❌ RUIM: Configuração hardcoded
+export const cors = createCorsMiddleware({
+  origins: 'https://app.example.com',
+});
+```
+
+### **2. Logging de Segurança**
+
+```typescript
+// ✅ BOM: Logging estruturado com contexto
+logger.warn('Suspicious request detected', {
+  ip: req.ip,
+  method: req.method,
+  url: req.url,
+  userAgent: req.get('User-Agent'),
+  attacks: suspicious,
+  requestId: (req as any).requestId,
+});
+
+// ❌ RUIM: Logging genérico
+console.log('Suspicious request');
+```
+
+### **3. Error Handling**
+
+```typescript
+// ✅ BOM: Error handling específico com códigos
+return res.status(401).json({
+  error: 'Authorization header required',
+  code: 'MISSING_AUTH_HEADER',
+});
+
+// ❌ RUIM: Error handling genérico
+return res.status(401).json({ error: 'Unauthorized' });
+```
+
+### **4. Rate Limiting**
+
+```typescript
+// ✅ BOM: Rate limiting baseado em usuário
+export const userRateLimit = createRateLimit({
+  keyGenerator: req => (req as any).user?.id || req.ip,
+  max: 200,
+});
+
+// ❌ RUIM: Rate limiting apenas por IP
+export const rateLimit = createRateLimit({
+  max: 100,
+});
+```
+
+### **5. Validação**
+
+```typescript
+// ✅ BOM: Validação com Zod schemas
+export const validateRequest = (schema: z.ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validated = schema.parse(req.body);
+      req.body = validated;
+      next();
+    } catch (error) {
+      // Error handling
+    }
+  };
+};
+
+// ❌ RUIM: Validação manual
+if (!req.body.email || !req.body.password) {
+  return res.status(400).json({ error: 'Missing fields' });
+}
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Request Flow**
+
+```
+HTTP Request → CORS → Rate Limit → Security Headers → Auth → Validation → Controller
+```
+
+### **2. Security Flow**
+
+```
+Request → Attack Detection → Request Tracking → Logging → Response
+```
+
+### **3. Auth Flow**
+
+```
+Request → Extract Token → Validate Token → Set User → Next Middleware
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Segurança Robusta**
+
+- **Múltiplas camadas** de proteção
+- **Detecção proativa** de ataques
+- **Rate limiting** inteligente
+- **Headers de segurança** completos
+
+### **2. Flexibilidade**
+
+- **Configuração** por ambiente
+- **Middlewares** reutilizáveis
+- **Autenticação** customizável
+- **CORS** configurável
+
+### **3. Monitoramento**
+
+- **Logging estruturado** de eventos
+- **Request tracking** com IDs únicos
+- **Métricas** de segurança
+- **Auditoria** completa
+
+### **4. Manutenibilidade**
+
+- **Separação clara** de responsabilidades
+- **Código modular** e testável
+- **Configuração** centralizada
+- **Documentação** clara
+
+## 📈 Recomendações de Melhoria
+
+### **1. JWT Authentication**
+
+```typescript
+// src/middleware/jwt.middleware.ts
+export const jwtAuth = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ error: 'Token required' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+};
+```
+
+### **2. Role-Based Access Control**
+
+```typescript
+// src/middleware/rbac.middleware.ts
+export const requireRole = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const user = (req as any).user;
+
+    if (!user || !roles.includes(user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    next();
+  };
+};
+```
+
+### **3. Security Monitoring**
+
+```typescript
+// src/utils/security-monitor.util.ts
+export class SecurityMonitor {
+  static async logSecurityEvent(event: SecurityEvent): Promise<void> {
+    await logger.warn('Security event', {
+      type: event.type,
+      severity: event.severity,
+      ip: event.ip,
+      userId: event.userId,
+      details: event.details,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  static async checkSuspiciousActivity(userId: string): Promise<boolean> {
+    // Implementar lógica de detecção de atividade suspeita
+    return false;
+  }
+}
+```
+
+### **4. Input Sanitization**
+
+```typescript
+// src/middleware/sanitization.middleware.ts
+export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+  if (req.body) {
+    req.body = sanitizeObject(req.body);
+  }
+
+  if (req.query) {
+    req.query = sanitizeObject(req.query);
+  }
+
+  next();
+};
+
+function sanitizeObject(obj: any): any {
+  if (typeof obj === 'string') {
+    return ValidationUtil.sanitizeText(obj);
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject);
+  }
+
+  if (obj && typeof obj === 'object') {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      sanitized[key] = sanitizeObject(value);
+    }
+    return sanitized;
+  }
+
+  return obj;
+}
+```
+
+## 🎯 Conclusão
+
+A arquitetura de Security & Auth no projeto está bem estruturada e implementa múltiplas camadas de proteção. O uso de **middlewares modulares**, **rate limiting inteligente**, **detecção de ataques**, **logging estruturado** e **configuração flexível** garante segurança robusta e manutenibilidade.
+
+As principais melhorias seriam implementar **JWT authentication**, **Role-Based Access Control**, **Security Monitoring** e **Input Sanitization** avançada para tornar o sistema ainda mais seguro e robusto.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

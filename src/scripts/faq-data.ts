@@ -172,7 +172,7 @@ export const faqData = [
     },
     {
         question: "Quais são os valores das ativações?",
-        answer: "Os valores das ativações variam conforme o tempo escolhido e o tipo de veículo. Para carros: 1 hora - R$ 2,00, 2 horas - R$ 3,50, 4 horas - R$ 6,00. Para motos: 1 hora - R$ 1,00, 2 horas - R$ 1,75, 4 horas - R$ 3,00."
+        answer: "Os valores das ativações variam conforme o tempo escolhido e o tipo de veículo. Verifique o valor na tela de ativação do aplicativo. (Agente IA: Verifique com uma tool, caso necessário.)"
     },
     {
         question: "Como cadastrar um novo veículo?",

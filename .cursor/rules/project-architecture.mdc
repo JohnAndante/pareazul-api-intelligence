@@ -1,0 +1,660 @@
+---
+alwaysApply: true
+description: Arquitetura do Projeto - Pare Azul API Intelligence
+---
+
+# 🏗️ Arquitetura do Projeto - Pare Azul API Intelligence
+
+## 📋 Resumo Executivo
+
+Este documento descreve a arquitetura completa do sistema de assistente IA conversacional para o Pare Azul. O projeto segue padrões de Clean Architecture + Domain-Driven Design com excelente separação de responsabilidades e type safety robusto.
+
+## 🎯 Padrão Arquitetural
+
+- **Clean Architecture + Domain-Driven Design**
+- **Separação clara de camadas** (Controllers → Services → Repositories)
+- **Inversão de dependências** bem implementada
+- **TypeScript** com tipagem forte em toda a aplicação
+- **Modularidade** excelente com responsabilidades bem definidas
+
+## 📁 Estrutura de Diretórios
+
+```
+src/
+├── 🤖 agents/                  # Agentes IA especializados
+│   └── assistant/                      # Agente principal de conversação
+│       ├── agent.ts                    # Configuração do LangChain
+│       ├── index.ts                    # Orquestração de mensagens
+│       ├── prompt.ts                   # Sistema de prompts dinâmicos
+│       └── schemas.ts                  # Schemas de validação
+├── 💼 services/                # Lógica de negócio
+│   ├── activation.service.ts           # Lógica de ativações
+│   ├── memory.service.ts               # Gerenciamento de memória
+│   └── session.service.ts              # Gerenciamento de sessões
+├── 🗃️ repositories/            # Acesso a dados (Repository Pattern)
+│   ├── base.repository.ts              # Repository base
+│   ├── chat.repository.ts              # Sessões de chat
+│   └── message.repository.ts           # Mensagens
+├── 🛣️ routes/                  # Roteamento da API
+│   ├── index.ts                        # Roteamento principal
+│   └── assistant.route.ts              # Rotas do assistente
+├── 🎮 controllers/             # Controladores HTTP
+│   └── assistant.controller.ts         # Controller principal
+├── 🛡️ middleware/              # Middlewares de segurança e validação
+│   ├── auth.middleware.ts              # Autenticação
+│   ├── validation.middleware.ts        # Validação Zod
+│   ├── rate-limit.middleware.ts        # Rate limiting
+│   ├── security.middleware.ts          # Headers de segurança
+│   ├── cors.middleware.ts              # CORS
+│   └── error-handler.middleware.ts     # Tratamento de erros
+├── 🔧 utils/                   # Utilitários e helpers
+│   ├── logger.util.ts                  # Sistema de logging
+│   ├── vector-search.util.ts           # Busca vetorial
+│   ├── validation.util.ts              # Utilitários de validação
+│   ├── crypto.util.ts                  # Criptografia
+│   ├── redis.util.ts                   # Utilitários Redis
+│   └── activation.utils.ts             # Utilitários de ativação
+├── 📝 types/                   # Definições TypeScript
+│   ├── chat.types.ts                   # Tipos de chat
+│   ├── activation.types.ts             # Tipos de ativação
+│   ├── vehicle.types.ts                # Tipos de veículos
+│   ├── prefecture.types.ts             # Tipos de prefeitura
+│   └── session.types.ts                # Tipos de sessão
+├── ⚙️ config/                  # Configurações do sistema
+│   ├── environment.config.ts           # Variáveis de ambiente
+│   ├── database.config.ts              # Configuração Supabase
+│   └── redis.config.ts                 # Configuração Redis
+├── 🛠️ tools/                   # Tools do LangChain
+│   ├── index.ts                        # Agregação de tools
+│   ├── activation.tools.ts             # Tools de ativação
+│   ├── database.tool.ts                # Tools de banco
+│   └── faq.tool.ts                     # Tool de FAQ
+├── 📊 api/                     # Integrações com APIs externas
+│   ├── activation.api.ts               # API de ativações
+│   ├── vehicle.api.ts                  # API de veículos
+│   └── prefecture.api.ts               # API de prefeitura
+├── ✅ validators/              # Schemas de validação Zod
+│   ├── activation.validator.ts         # Validação de ativações
+│   ├── user.validator.ts               # Validação de usuários
+│   ├── vehicle.validator.ts            # Validação de veículos
+│   ├── prefecture.validator.ts         # Validação de prefeitura
+│   └── notification.validator.ts       # Validação de notificações
+└── 📜 scripts/                 # Scripts utilitários
+    ├── populate-faq.ts                 # População do FAQ
+    └── faq-data.ts                     # Dados do FAQ
+```
+
+## 🔄 Fluxo de Execução
+
+### 1. Entrada da Requisição
+
+```
+HTTP Request → Express Router → Middleware Stack → Controller
+```
+
+### 2. Processamento Principal
+
+```
+Controller → Agent Index → Session Service → Memory Service → AI Agent
+```
+
+### 3. Execução do Agente IA
+
+```
+AI Agent → LangChain → Tools → External APIs → Response
+```
+
+### 4. Persistência e Cache
+
+```
+Memory Service → Redis (Cache) + Supabase (Persistence)
+```
+
+## 🛠️ Sistema de Tools
+
+### Estrutura das Tools
+
+- **LangChain DynamicStructuredTool**: Padrão consistente
+- **Zod Schemas**: Validação de entrada tipada
+- **Separação por domínio**: Activation, Database, FAQ
+- **Error Handling**: Tratamento robusto de erros
+
+### Tools Disponíveis
+
+1. **`faq_search`**: Busca vetorial no conhecimento
+2. **`get_user_info`**: Informações do usuário
+3. **`get_message_history`**: Histórico de conversas
+4. **`get_session_status`**: Status da sessão
+5. **`checkVehicleCurrentActivations`**: Verificar ativações
+6. **`registerVehicleActivation`**: Registrar ativações
+
+## 💼 Camada de Serviços
+
+### MemoryService
+
+- **Responsabilidade**: Gerenciamento de cache e buffer de memória
+- **Tecnologias**: Redis + Supabase
+- **Padrões**: Singleton, Cache-Aside Pattern
+
+### SessionService
+
+- **Responsabilidade**: Gerenciamento do ciclo de vida das sessões
+- **Lógica**: Replicação do fluxo n8n
+- **Features**: Auto-inativação, sessões ativas únicas
+
+### ActivationService
+
+- **Responsabilidade**: Lógica de negócio para ativações de veículos
+- **Integrações**: APIs externas do Pareazul
+- **Validações**: Regras de negócio complexas
+
+## 🔐 Sistema de Validação e Autenticação
+
+### Validação (Zod)
+
+- **Schemas centralizados** em `validators/`
+- **Validação em tempo de execução**
+- **Type safety** automático
+- **Mensagens de erro** padronizadas
+
+### Autenticação
+
+- **HeaderAuth** compatível com n8n
+- **Middleware flexível** com configurações
+- **Suporte a Bearer tokens**
+- **Validação opcional/obrigatória**
+
+### Middleware Stack
+
+1. **CORS** → **Security** → **Rate Limiting** → **Auth** → **Validation** → **Controller**
+
+## 🧠 Sistema de Memória Híbrida
+
+### Redis (Cache Layer)
+
+- **Session Cache**: Metadados de sessão
+- **Memory Buffer**: Mensagens recentes
+- **TTL configurável**: 6 horas padrão
+- **Fallback graceful**: Continua funcionando sem Redis
+
+### Supabase (Persistence Layer)
+
+- **Chat Sessions**: Sessões persistentes
+- **Messages**: Histórico completo
+- **Vector Search**: FAQ com embeddings
+- **Admin Client**: Operações privilegiadas
+
+## 🤖 Implementação do Agente IA
+
+### LangChain Integration
+
+- **OpenAI GPT-4o-mini**: Modelo principal
+- **Temperature 0.3**: Respostas balanceadas
+- **Max Iterations 12**: Previne loops infinitos
+- **Early Stopping**: Otimização de performance
+
+### Prompt Engineering
+
+- **Sistema de prompt dinâmico** baseado no payload
+- **Instruções claras** para uso das tools
+- **Contexto de sessão** preservado
+- **Exemplos práticos** de interação
+
+### Tool Integration
+
+- **Seleção automática** de tools baseada no contexto
+- **Validação de entrada** antes da execução
+- **Error handling** robusto
+- **Logging detalhado** para debugging
+
+## 🛠️ Tecnologias e Dependências
+
+### Runtime & Framework
+
+- **Bun**: Runtime moderno e rápido
+- **Express.js**: Framework web robusto
+- **TypeScript**: Tipagem estática
+
+### AI & ML
+
+- **LangChain**: Framework para LLMs
+- **OpenAI**: GPT-4o-mini para conversação
+- **Vector Search**: Embeddings para FAQ
+
+### Data & Cache
+
+- **Supabase**: PostgreSQL + Auth + Vector
+- **Redis**: Cache distribuído
+- **Moment.js**: Manipulação de datas
+
+### Validation & Security
+
+- **Zod**: Validação de schemas
+- **Helmet**: Security headers
+- **Express Rate Limit**: Rate limiting
+- **CORS**: Cross-origin requests
+
+## ✅ Pontos Fortes da Arquitetura
+
+### Excelentes Práticas
+
+1. **Separação de responsabilidades** muito clara
+2. **Type safety** em toda a aplicação
+3. **Error handling** robusto e consistente
+4. **Logging estruturado** com Winston
+5. **Configuração centralizada** com validação
+6. **Middleware modular** e reutilizável
+7. **Repository pattern** bem implementado
+8. **Singleton pattern** para serviços
+9. **Validação de entrada** em todas as camadas
+10. **Cache strategy** inteligente (Redis + DB)
+
+### Arquitetura Escalável
+
+- **Modular**: Fácil adicionar novos agentes
+- **Stateless**: Servidores podem ser replicados
+- **Cache distribuído**: Redis para performance
+- **Database otimizada**: Supabase com índices
+
+### Manutenibilidade
+
+- **Código limpo**: ESLint + Prettier
+- **Documentação**: README detalhado
+- **Scripts**: Automação de tarefas
+- **TypeScript**: IntelliSense e refactoring
+
+## 📊 Endpoints da API
+
+### Assistant Endpoints
+
+- `POST /api/assistant/message` - Processar mensagem direta
+- `POST /api/assistant/webhook` - Webhook (replica n8n)
+- `GET /api/assistant/health` - Health check
+
+### Health Check
+
+- `GET /health` - Health check geral
+- `GET /api/health` - Health check da API
+
+## 🔧 Scripts Disponíveis
+
+```bash
+# Desenvolvimento
+bun run dev          # Servidor com hot reload
+bun run start        # Servidor de produção
+
+# Qualidade de código
+bun run lint         # Verificar problemas ESLint
+bun run lint:fix     # Corrigir problemas automaticamente
+bun run format       # Formatar código com Prettier
+bun run type-check   # Verificar tipos TypeScript
+bun run check        # Verificação completa (tipos + lint)
+
+# Utilitários
+bun run populate-faq # Popular base de conhecimento FAQ
+```
+
+## 📈 Status do Projeto
+
+### ✅ Completo
+
+- [x] Infraestrutura base (configurações, utils, middleware)
+- [x] Assistant Agent funcional com tools programáticas
+- [x] Sistema de memória híbrido (Redis + Supabase)
+- [x] Gerenciamento de sessões
+- [x] Sistema de webhooks (replicando fluxo n8n)
+- [x] Repositórios para banco de dados
+- [x] Sistema de logging e monitoramento
+- [x] Linting e formatação automática
+- [x] Sistema de busca vetorial (FAQ)
+
+### 🚧 Em Desenvolvimento
+
+- [ ] Testes automatizados
+- [ ] Containerização
+- [ ] Monitoramento avançado
+
+### 📋 Roadmap
+
+- [ ] CI/CD pipeline
+- [ ] Production deployment
+- [ ] API documentation (OpenAPI)
+- [ ] Performance optimization
+
+## 🎯 Conclusão
+
+A arquitetura está **muito bem estruturada** e segue as melhores práticas da indústria. O projeto demonstra excelente separação de responsabilidades, código limpo e maintível, type safety robusto, error handling consistente e arquitetura escalável.
+
+As principais melhorias seriam adicionar **testes automatizados** e **containerização** para completar o ciclo de desenvolvimento profissional. O sistema está pronto para produção com algumas otimizações adicionais.
+
+---
+
+_Este documento deve ser atualizado sempre que houver mudanças significativas na arquitetura do projeto._
+
+# 🏗️ Arquitetura do Projeto - Pare Azul API Intelligence
+
+## 📋 Resumo Executivo
+
+Este documento descreve a arquitetura completa do sistema de assistente IA conversacional para o Pare Azul. O projeto segue padrões de Clean Architecture + Domain-Driven Design com excelente separação de responsabilidades e type safety robusto.
+
+## 🎯 Padrão Arquitetural
+
+- **Clean Architecture + Domain-Driven Design**
+- **Separação clara de camadas** (Controllers → Services → Repositories)
+- **Inversão de dependências** bem implementada
+- **TypeScript** com tipagem forte em toda a aplicação
+- **Modularidade** excelente com responsabilidades bem definidas
+
+## 📁 Estrutura de Diretórios
+
+```
+src/
+├── 🤖 agents/                  # Agentes IA especializados
+│   └── assistant/                      # Agente principal de conversação
+│       ├── agent.ts                    # Configuração do LangChain
+│       ├── index.ts                    # Orquestração de mensagens
+│       ├── prompt.ts                   # Sistema de prompts dinâmicos
+│       └── schemas.ts                  # Schemas de validação
+├── 💼 services/                # Lógica de negócio
+│   ├── activation.service.ts           # Lógica de ativações
+│   ├── memory.service.ts               # Gerenciamento de memória
+│   └── session.service.ts              # Gerenciamento de sessões
+├── 🗃️ repositories/            # Acesso a dados (Repository Pattern)
+│   ├── base.repository.ts              # Repository base
+│   ├── chat.repository.ts              # Sessões de chat
+│   └── message.repository.ts           # Mensagens
+├── 🛣️ routes/                  # Roteamento da API
+│   ├── index.ts                        # Roteamento principal
+│   └── assistant.route.ts              # Rotas do assistente
+├── 🎮 controllers/             # Controladores HTTP
+│   └── assistant.controller.ts         # Controller principal
+├── 🛡️ middleware/              # Middlewares de segurança e validação
+│   ├── auth.middleware.ts              # Autenticação
+│   ├── validation.middleware.ts        # Validação Zod
+│   ├── rate-limit.middleware.ts        # Rate limiting
+│   ├── security.middleware.ts          # Headers de segurança
+│   ├── cors.middleware.ts              # CORS
+│   └── error-handler.middleware.ts     # Tratamento de erros
+├── 🔧 utils/                   # Utilitários e helpers
+│   ├── logger.util.ts                  # Sistema de logging
+│   ├── vector-search.util.ts           # Busca vetorial
+│   ├── validation.util.ts              # Utilitários de validação
+│   ├── crypto.util.ts                  # Criptografia
+│   ├── redis.util.ts                   # Utilitários Redis
+│   └── activation.utils.ts             # Utilitários de ativação
+├── 📝 types/                   # Definições TypeScript
+│   ├── chat.types.ts                   # Tipos de chat
+│   ├── activation.types.ts             # Tipos de ativação
+│   ├── vehicle.types.ts                # Tipos de veículos
+│   ├── prefecture.types.ts             # Tipos de prefeitura
+│   └── session.types.ts                # Tipos de sessão
+├── ⚙️ config/                  # Configurações do sistema
+│   ├── environment.config.ts           # Variáveis de ambiente
+│   ├── database.config.ts              # Configuração Supabase
+│   └── redis.config.ts                 # Configuração Redis
+├── 🛠️ tools/                   # Tools do LangChain
+│   ├── index.ts                        # Agregação de tools
+│   ├── activation.tools.ts             # Tools de ativação
+│   ├── database.tool.ts                # Tools de banco
+│   └── faq.tool.ts                     # Tool de FAQ
+├── 📊 api/                     # Integrações com APIs externas
+│   ├── activation.api.ts               # API de ativações
+│   ├── vehicle.api.ts                  # API de veículos
+│   └── prefecture.api.ts               # API de prefeitura
+├── ✅ validators/              # Schemas de validação Zod
+│   ├── activation.validator.ts         # Validação de ativações
+│   ├── user.validator.ts               # Validação de usuários
+│   ├── vehicle.validator.ts            # Validação de veículos
+│   ├── prefecture.validator.ts         # Validação de prefeitura
+│   └── notification.validator.ts       # Validação de notificações
+└── 📜 scripts/                 # Scripts utilitários
+    ├── populate-faq.ts                 # População do FAQ
+    └── faq-data.ts                     # Dados do FAQ
+```
+
+## 🔄 Fluxo de Execução
+
+### 1. Entrada da Requisição
+
+```
+HTTP Request → Express Router → Middleware Stack → Controller
+```
+
+### 2. Processamento Principal
+
+```
+Controller → Agent Index → Session Service → Memory Service → AI Agent
+```
+
+### 3. Execução do Agente IA
+
+```
+AI Agent → LangChain → Tools → External APIs → Response
+```
+
+### 4. Persistência e Cache
+
+```
+Memory Service → Redis (Cache) + Supabase (Persistence)
+```
+
+## 🛠️ Sistema de Tools
+
+### Estrutura das Tools
+
+- **LangChain DynamicStructuredTool**: Padrão consistente
+- **Zod Schemas**: Validação de entrada tipada
+- **Separação por domínio**: Activation, Database, FAQ
+- **Error Handling**: Tratamento robusto de erros
+
+### Tools Disponíveis
+
+1. **`faq_search`**: Busca vetorial no conhecimento
+2. **`get_user_info`**: Informações do usuário
+3. **`get_message_history`**: Histórico de conversas
+4. **`get_session_status`**: Status da sessão
+5. **`checkVehicleCurrentActivations`**: Verificar ativações
+6. **`registerVehicleActivation`**: Registrar ativações
+
+## 💼 Camada de Serviços
+
+### MemoryService
+
+- **Responsabilidade**: Gerenciamento de cache e buffer de memória
+- **Tecnologias**: Redis + Supabase
+- **Padrões**: Singleton, Cache-Aside Pattern
+
+### SessionService
+
+- **Responsabilidade**: Gerenciamento do ciclo de vida das sessões
+- **Lógica**: Replicação do fluxo n8n
+- **Features**: Auto-inativação, sessões ativas únicas
+
+### ActivationService
+
+- **Responsabilidade**: Lógica de negócio para ativações de veículos
+- **Integrações**: APIs externas do Pareazul
+- **Validações**: Regras de negócio complexas
+
+## 🔐 Sistema de Validação e Autenticação
+
+### Validação (Zod)
+
+- **Schemas centralizados** em `validators/`
+- **Validação em tempo de execução**
+- **Type safety** automático
+- **Mensagens de erro** padronizadas
+
+### Autenticação
+
+- **HeaderAuth** compatível com n8n
+- **Middleware flexível** com configurações
+- **Suporte a Bearer tokens**
+- **Validação opcional/obrigatória**
+
+### Middleware Stack
+
+1. **CORS** → **Security** → **Rate Limiting** → **Auth** → **Validation** → **Controller**
+
+## 🧠 Sistema de Memória Híbrida
+
+### Redis (Cache Layer)
+
+- **Session Cache**: Metadados de sessão
+- **Memory Buffer**: Mensagens recentes
+- **TTL configurável**: 6 horas padrão
+- **Fallback graceful**: Continua funcionando sem Redis
+
+### Supabase (Persistence Layer)
+
+- **Chat Sessions**: Sessões persistentes
+- **Messages**: Histórico completo
+- **Vector Search**: FAQ com embeddings
+- **Admin Client**: Operações privilegiadas
+
+## 🤖 Implementação do Agente IA
+
+### LangChain Integration
+
+- **OpenAI GPT-4o-mini**: Modelo principal
+- **Temperature 0.3**: Respostas balanceadas
+- **Max Iterations 12**: Previne loops infinitos
+- **Early Stopping**: Otimização de performance
+
+### Prompt Engineering
+
+- **Sistema de prompt dinâmico** baseado no payload
+- **Instruções claras** para uso das tools
+- **Contexto de sessão** preservado
+- **Exemplos práticos** de interação
+
+### Tool Integration
+
+- **Seleção automática** de tools baseada no contexto
+- **Validação de entrada** antes da execução
+- **Error handling** robusto
+- **Logging detalhado** para debugging
+
+## 🛠️ Tecnologias e Dependências
+
+### Runtime & Framework
+
+- **Bun**: Runtime moderno e rápido
+- **Express.js**: Framework web robusto
+- **TypeScript**: Tipagem estática
+
+### AI & ML
+
+- **LangChain**: Framework para LLMs
+- **OpenAI**: GPT-4o-mini para conversação
+- **Vector Search**: Embeddings para FAQ
+
+### Data & Cache
+
+- **Supabase**: PostgreSQL + Auth + Vector
+- **Redis**: Cache distribuído
+- **Moment.js**: Manipulação de datas
+
+### Validation & Security
+
+- **Zod**: Validação de schemas
+- **Helmet**: Security headers
+- **Express Rate Limit**: Rate limiting
+- **CORS**: Cross-origin requests
+
+## ✅ Pontos Fortes da Arquitetura
+
+### Excelentes Práticas
+
+1. **Separação de responsabilidades** muito clara
+2. **Type safety** em toda a aplicação
+3. **Error handling** robusto e consistente
+4. **Logging estruturado** com Winston
+5. **Configuração centralizada** com validação
+6. **Middleware modular** e reutilizável
+7. **Repository pattern** bem implementado
+8. **Singleton pattern** para serviços
+9. **Validação de entrada** em todas as camadas
+10. **Cache strategy** inteligente (Redis + DB)
+
+### Arquitetura Escalável
+
+- **Modular**: Fácil adicionar novos agentes
+- **Stateless**: Servidores podem ser replicados
+- **Cache distribuído**: Redis para performance
+- **Database otimizada**: Supabase com índices
+
+### Manutenibilidade
+
+- **Código limpo**: ESLint + Prettier
+- **Documentação**: README detalhado
+- **Scripts**: Automação de tarefas
+- **TypeScript**: IntelliSense e refactoring
+
+## 📊 Endpoints da API
+
+### Assistant Endpoints
+
+- `POST /api/assistant/message` - Processar mensagem direta
+- `POST /api/assistant/webhook` - Webhook (replica n8n)
+- `GET /api/assistant/health` - Health check
+
+### Health Check
+
+- `GET /health` - Health check geral
+- `GET /api/health` - Health check da API
+
+## 🔧 Scripts Disponíveis
+
+```bash
+# Desenvolvimento
+bun run dev          # Servidor com hot reload
+bun run start        # Servidor de produção
+
+# Qualidade de código
+bun run lint         # Verificar problemas ESLint
+bun run lint:fix     # Corrigir problemas automaticamente
+bun run format       # Formatar código com Prettier
+bun run type-check   # Verificar tipos TypeScript
+bun run check        # Verificação completa (tipos + lint)
+
+# Utilitários
+bun run populate-faq # Popular base de conhecimento FAQ
+```
+
+## 📈 Status do Projeto
+
+### ✅ Completo
+
+- [x] Infraestrutura base (configurações, utils, middleware)
+- [x] Assistant Agent funcional com tools programáticas
+- [x] Sistema de memória híbrido (Redis + Supabase)
+- [x] Gerenciamento de sessões
+- [x] Sistema de webhooks (replicando fluxo n8n)
+- [x] Repositórios para banco de dados
+- [x] Sistema de logging e monitoramento
+- [x] Linting e formatação automática
+- [x] Sistema de busca vetorial (FAQ)
+
+### 🚧 Em Desenvolvimento
+
+- [ ] Testes automatizados
+- [ ] Containerização
+- [ ] Monitoramento avançado
+
+### 📋 Roadmap
+
+- [ ] CI/CD pipeline
+- [ ] Production deployment
+- [ ] API documentation (OpenAPI)
+- [ ] Performance optimization
+
+## 🎯 Conclusão
+
+A arquitetura está **muito bem estruturada** e segue as melhores práticas da indústria. O projeto demonstra excelente separação de responsabilidades, código limpo e maintível, type safety robusto, error handling consistente e arquitetura escalável.
+
+As principais melhorias seriam adicionar **testes automatizados** e **containerização** para completar o ciclo de desenvolvimento profissional. O sistema está pronto para produção com algumas otimizações adicionais.
+
+---
+
+_Este documento deve ser atualizado sempre que houver mudanças significativas na arquitetura do projeto._

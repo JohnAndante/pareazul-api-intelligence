@@ -1,0 +1,656 @@
+---
+alwaysApply: false
+description: Guia Completo de Services - Lógica de Negócio
+---
+
+# 💼 Guia Completo de Services - Lógica de Negócio
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para Services no projeto Pare Azul API Intelligence. Os Services são responsáveis por encapsular a lógica de negócio, orquestrar chamadas para APIs e repositories, e fornecer uma interface limpa para os controllers.
+
+## 🎯 Propósito dos Services
+
+### **1. Lógica de Negócio**
+
+- **Encapsulamento** de regras de negócio
+- **Orquestração** de APIs e repositories
+- **Transformação** de dados
+- **Validação** de regras específicas
+
+### **2. Camada de Abstração**
+
+- **Interface limpa** para controllers
+- **Abstração** de complexidade
+- **Reutilização** de lógica
+- **Testabilidade** facilitada
+
+### **3. Integração de Dados**
+
+- **Agregação** de múltiplas fontes
+- **Cache** e otimização
+- **Tratamento de erros** específicos
+- **Logging** de operações
+
+## 🏗️ Estrutura Padrão
+
+### **1. Template Base**
+
+```typescript
+// src/services/[domain].service.ts
+import { [DomainApi] } from '../api/[domain].api';
+import { [DomainRepository] } from '../repositories/[domain].repository';
+import { logger } from '../utils/logger.util';
+import { [DomainType] } from '../types/[domain].types';
+
+export class [Domain]Service {
+    private readonly logger = logger.child({ service: '[Domain]Service' });
+
+    /**
+     * [Descrição da funcionalidade]
+     */
+    async [methodName](params: [ParamsType]): Promise<[ReturnType]> {
+        return new Promise((resolve, reject) => {
+            // 1. Validação de parâmetros
+            if (!params.requiredField) {
+                this.logger.error(`Missing required field: requiredField`);
+                return reject({ text: "Missing required field." });
+            }
+
+            // 2. Busca de dados relacionados
+            return this.getRelatedData(params)
+                .then(async (relatedData) => {
+                    // 3. Processamento da lógica de negócio
+                    const result = await this.processBusinessLogic(params, relatedData);
+
+                    // 4. Retorno do resultado
+                    return resolve(result);
+                })
+                .catch(error => {
+                    // 5. Error handling específico
+                    this.logger.error('[methodName] Error:', error);
+                    reject({ text: "Error processing request." });
+                });
+        });
+    }
+
+    /**
+     * Método auxiliar para buscar dados relacionados
+     */
+    private async getRelatedData(params: [ParamsType]): Promise<[DataType]> {
+        // Implementação específica
+    }
+
+    /**
+     * Método auxiliar para processar lógica de negócio
+     */
+    private async processBusinessLogic(params: [ParamsType], data: [DataType]): Promise<[ReturnType]> {
+        // Implementação específica
+    }
+}
+
+export const [domain]Service = new [Domain]Service();
+```
+
+### **2. Padrões Obrigatórios**
+
+```typescript
+// ✅ SEMPRE usar Promise pattern em services
+async methodName(params: ParamsType): Promise<ReturnType> {
+    return new Promise((resolve, reject) => {
+        // Lógica do service
+        return this.getData(params)
+            .then(result => resolve(result))
+            .catch(error => {
+                this.logger.error('[methodName] Error:', error);
+                reject({ text: "Error message." });
+            });
+    });
+}
+
+// ❌ NUNCA usar try/catch em services
+async methodNameWrong(params: ParamsType): Promise<ReturnType> {
+    try {
+        const result = await this.getData(params);
+        return result;
+    } catch (error) {
+        this.logger.error('[methodNameWrong] Error:', error);
+        throw error;
+    }
+}
+```
+
+## 🔧 Componentes Obrigatórios
+
+### **1. Imports Padrão**
+
+```typescript
+// Imports obrigatórios para todos os services
+import { [DomainApi] } from '../api/[domain].api';
+import { [DomainRepository] } from '../repositories/[domain].repository';
+import { logger } from '../utils/logger.util';
+import { [DomainType] } from '../types/[domain].types';
+```
+
+### **2. Logger Específico**
+
+```typescript
+// Logger específico do service
+export class [Domain]Service {
+    private readonly logger = logger.child({ service: '[Domain]Service' });
+}
+```
+
+### **3. Estrutura de Método**
+
+```typescript
+async methodName(params: ParamsType): Promise<ReturnType> {
+    return new Promise((resolve, reject) => {
+        // 1. Validação de parâmetros
+        if (!params.requiredField) {
+            this.logger.error(`Missing required field: requiredField`);
+            return reject({ text: "Missing required field." });
+        }
+
+        // 2. Busca de dados relacionados
+        return this.getRelatedData(params)
+            .then(async (relatedData) => {
+                // 3. Processamento da lógica de negócio
+                const result = await this.processBusinessLogic(params, relatedData);
+
+                // 4. Retorno do resultado
+                return resolve(result);
+            })
+            .catch(error => {
+                // 5. Error handling específico
+                this.logger.error('[methodName] Error:', error);
+                reject({ text: "Error processing request." });
+            });
+    });
+}
+```
+
+### **4. Error Handling Padrão**
+
+```typescript
+// Error handling obrigatório em todos os métodos
+.catch(error => {
+    if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { code?: number; message?: string } } };
+
+        // Tratamento de erros específicos da API
+        if (axiosError.response?.data?.code === 606) {
+            return {
+                text: `❌ BLOCKED: Maximum number of active plates reached.`
+            };
+        }
+
+        if (axiosError.response?.data?.code === 400 &&
+            axiosError.response?.data?.message?.toLowerCase().includes('saldo')) {
+            return {
+                text: `❌ BLOCKED: Insufficient balance.`
+            };
+        }
+
+        // Outros códigos de erro específicos
+        if (axiosError.response?.data?.code) {
+            const errorMessage = axiosError.response.data.message || 'Unknown error';
+            return {
+                text: `❌ FAILED: ${errorMessage}`
+            };
+        }
+    }
+
+    this.logger.error('[methodName] Error:', error);
+    return {
+        text: `❌ FAILED: An error occurred while processing the request.`
+    };
+});
+```
+
+## 📊 Exemplos Implementados
+
+### **1. Session Service**
+
+```typescript
+// src/services/session.service.ts
+import { chatRepository } from '../repositories/chat.repository';
+import { logger } from '../utils/logger.util';
+import { v4 as uuidv4 } from 'uuid';
+
+export class SessionService {
+  /**
+   * Cria ou recupera uma sessão seguindo a lógica do n8n
+   */
+  async createSession(input: {
+    payload: any;
+    assistant_id?: string;
+  }): Promise<SessionResult | null> {
+    try {
+      const { payload, assistant_id } = input;
+      const userId = payload.usuario_id;
+
+      // 1. Se tem assistant_id, tenta recuperar sessão existente
+      if (assistant_id) {
+        const existingSession = await this.findActiveSession(userId, assistant_id);
+        if (existingSession) {
+          logger.info(`[SessionService] Using existing session: ${existingSession.id}`);
+          return {
+            session: existingSession,
+            assistantId: assistant_id,
+            isNewSession: false,
+          };
+        }
+      }
+
+      // 2. Se não tem assistant_id, verifica se existe alguma sessão ativa do usuário
+      if (!assistant_id) {
+        const existingUserSession = await chatRepository.findActiveByUserId(userId);
+        if (existingUserSession) {
+          logger.info(`[SessionService] Using existing user session: ${existingUserSession.id}`);
+          return {
+            session: existingUserSession,
+            assistantId: existingUserSession.assistant_id,
+            isNewSession: false,
+          };
+        }
+      }
+
+      // 3. Se não encontrou nenhuma sessão, cria nova
+      logger.info(`[SessionService] Creating new session for user: ${userId}`);
+
+      // 4. Inativa sessões antigas do usuário (como no n8n)
+      await this.inactivateOldSessions(userId);
+
+      // 5. Cria nova sessão
+      const newAssistantId = assistant_id || uuidv4();
+      const newSession = await chatRepository.createChat({
+        user_id: userId,
+        prefecture_id: payload.prefeitura_id,
+        assistant_id: newAssistantId,
+      });
+
+      if (!newSession) {
+        logger.error('[SessionService] Failed to create new session');
+        return null;
+      }
+
+      logger.info(`[SessionService] New session created: ${newSession.id}`);
+
+      return {
+        session: newSession,
+        assistantId: newAssistantId,
+        isNewSession: true,
+      };
+    } catch (error) {
+      logger.error('[SessionService] Error creating session:', error);
+      return null;
+    }
+  }
+}
+
+export const sessionService = new SessionService();
+```
+
+**Características:**
+
+- **Lógica complexa** de gerenciamento de sessões
+- **Múltiplas validações** e condições
+- **Integração** com repository
+- **Logging detalhado** de cada etapa
+
+### **2. Activation Service**
+
+```typescript
+// src/services/activation.service.ts
+export class ActivationService {
+  private readonly logger = logger.child({ service: 'ActivationService' });
+
+  checkCurrentVehicleActivation(params: CheckVehicleActivationParams): Promise<{ text: string }> {
+    return new Promise((resolve, reject) => {
+      const { userId, vehiclePlate } = params;
+
+      return memoryService
+        .getSessionCache(userId)
+        .then(async userPayload => {
+          if (!userPayload) {
+            this.logger.error(`User session not found for userId: ${userId}`);
+            return {
+              text: 'User session not found. Wrong userId provided or user session expired.',
+            };
+          }
+
+          const {
+            payload: { prefeitura_id: prefectureId, prefeitura_timezone: prefectureTimezone },
+            prefecture_user_token: prefectureUserToken,
+          } = userPayload;
+
+          const clearPlateValue = StringUtil.clearPlate(vehiclePlate);
+
+          const activations = await fetchVehicleCurrentActivations(
+            clearPlateValue,
+            prefectureId,
+            prefectureTimezone,
+            prefectureUserToken
+          );
+
+          if (!activations || activations.length === 0) {
+            return resolve({ text: `No activation found for vehicle plate ${vehiclePlate}.` });
+          }
+
+          const latestActivation = activations[0];
+
+          const responseText =
+            `Vehicle plate ${vehiclePlate} is currently activated.` +
+            `\n The current activation will expire on ${latestActivation.remaining_time} minutes.` +
+            `\n Precisely, it will expire on ${latestActivation.end_date} (prefecture local time).` +
+            `${latestActivation.is_extended ? '\n This activation is an extension of a previous one.' : ''}` +
+            `\n More details: ${JSON.stringify(activations, null)}`;
+
+          return resolve({ text: responseText });
+        })
+        .catch(error => {
+          this.logger.error('Error getting user payload:', error);
+          reject({ text: 'Error getting user payload.' });
+        });
+    });
+  }
+}
+
+export const activationService = new ActivationService();
+```
+
+**Características:**
+
+- **Promise pattern** obrigatório
+- **Error handling** específico por tipo
+- **Integração** com múltiplas APIs
+- **Transformação** de dados complexa
+
+### **3. Memory Service**
+
+```typescript
+// src/services/memory.service.ts
+export class MemoryService {
+  private readonly SESSION_CACHE_PREFIX = 'chat_assistente_';
+  private readonly MEMORY_BUFFER_PREFIX = 'memory_buffer_';
+  private readonly SESSION_TTL = env.SESSION_TTL;
+  private readonly BUFFER_SIZE = env.MEMORY_BUFFER_SIZE;
+
+  /**
+   * Armazena metadados da sessão no Redis
+   */
+  async setSessionCache(userId: string, sessionData: SessionCache): Promise<boolean> {
+    try {
+      const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
+      const value = JSON.stringify(sessionData);
+
+      await redis.setEx(key, this.SESSION_TTL, value);
+      logger.debug(`Session cache stored for user ${userId}`);
+      return true;
+    } catch (error) {
+      logger.warn('Redis unavailable for session cache, using memory fallback:', error);
+      // Fallback: armazenar em memória local (não persistente)
+      return true;
+    }
+  }
+
+  /**
+   * Recupera metadados da sessão do Redis
+   */
+  async getSessionCache(userId: string): Promise<SessionCache | null> {
+    try {
+      const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
+      const value = await redis.get(key);
+
+      if (!value) {
+        return null;
+      }
+
+      return JSON.parse(value) as SessionCache;
+    } catch (error) {
+      logger.error('Error retrieving session cache:', error);
+      return null;
+    }
+  }
+}
+
+export const memoryService = new MemoryService();
+```
+
+**Características:**
+
+- **Singleton pattern** para instância única
+- **Cache management** com Redis
+- **Fallback** para memória local
+- **Configuração** centralizada
+
+## 🎯 Melhores Práticas
+
+### **1. Nomenclatura**
+
+```typescript
+// ✅ BOM: Nomes descritivos e consistentes
+export class ActivationService {}
+export class SessionService {}
+export class MemoryService {}
+
+// ❌ RUIM: Nomes genéricos ou inconsistentes
+export class Service {}
+export class MainService {}
+export class HelperService {}
+```
+
+### **2. Métodos**
+
+```typescript
+// ✅ BOM: Métodos específicos e descritivos
+async checkCurrentVehicleActivation(params: CheckVehicleActivationParams): Promise<{ text: string }> { }
+async handleRegisterVehicleActivation(input: HandleRegisterVehicleActivationParams): Promise<{ text: string }> { }
+async createSession(input: { payload: any; assistant_id?: string }): Promise<SessionResult | null> { }
+
+// ❌ RUIM: Métodos genéricos ou confusos
+async process(params: any): Promise<any> { }
+async handle(input: any): Promise<any> { }
+async doSomething(data: any): Promise<any> { }
+```
+
+### **3. Error Handling**
+
+```typescript
+// ✅ BOM: Error handling específico e informativo
+.catch(error => {
+    if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { code?: number; message?: string } } };
+
+        if (axiosError.response?.data?.code === 606) {
+            return {
+                text: `❌ BLOCKED: Maximum number of active plates reached.`
+            };
+        }
+    }
+
+    this.logger.error('[methodName] Error:', error);
+    return {
+        text: `❌ FAILED: An error occurred while processing the request.`
+    };
+});
+
+// ❌ RUIM: Error handling genérico ou inadequado
+.catch(error => {
+    console.log('Error:', error);
+    return { text: 'Error' };
+});
+```
+
+### **4. Logging**
+
+```typescript
+// ✅ BOM: Log específico e informativo
+this.logger.error(`User session not found for userId: ${userId}`);
+logger.info(`[SessionService] Using existing session: ${existingSession.id}`);
+
+// ❌ RUIM: Log genérico ou desnecessário
+console.log('Error');
+logger.info('Processing');
+```
+
+### **5. Validação**
+
+```typescript
+// ✅ BOM: Validação específica e clara
+if (!userPayload) {
+  this.logger.error(`User session not found for userId: ${userId}`);
+  return { text: 'User session not found. Wrong userId provided or user session expired.' };
+}
+
+// ❌ RUIM: Validação genérica ou inadequada
+if (!params) {
+  return { text: 'Invalid params' };
+}
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Chamada do Controller**
+
+```
+Controller → Service Method → Validation → Business Logic
+```
+
+### **2. Processamento**
+
+```
+Service → API Calls → Data Transformation → Response
+```
+
+### **3. Error Flow**
+
+```
+Error → Log → Specific Handling → Error Response
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Encapsulamento**
+
+- **Lógica de negócio** isolada
+- **Interface limpa** para controllers
+- **Reutilização** de código
+
+### **2. Testabilidade**
+
+- **Métodos isolados** e testáveis
+- **Dependency injection** clara
+- **Mocking** facilitado
+
+### **3. Manutenibilidade**
+
+- **Separação clara** de responsabilidades
+- **Código organizado** e legível
+- **Logging estruturado** por domínio
+
+### **4. Robustez**
+
+- **Error handling** específico
+- **Validação robusta** de dados
+- **Fallback** para falhas
+
+## 📈 Recomendações de Melhoria
+
+### **1. Base Service**
+
+```typescript
+// Criar service base com funcionalidades comuns
+abstract class BaseService {
+  protected readonly logger = logger.child({ service: this.constructor.name });
+
+  protected handleApiError(error: any, context: string): { text: string } {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { code?: number; message?: string } } };
+
+      if (axiosError.response?.data?.code === 606) {
+        return { text: `❌ BLOCKED: Maximum number of active plates reached.` };
+      }
+
+      if (
+        axiosError.response?.data?.code === 400 &&
+        axiosError.response?.data?.message?.toLowerCase().includes('saldo')
+      ) {
+        return { text: `❌ BLOCKED: Insufficient balance.` };
+      }
+
+      if (axiosError.response?.data?.code) {
+        const errorMessage = axiosError.response.data.message || 'Unknown error';
+        return { text: `❌ FAILED: ${errorMessage}` };
+      }
+    }
+
+    this.logger.error(`[${context}] Error:`, error);
+    return { text: `❌ FAILED: An error occurred while processing the request.` };
+  }
+}
+```
+
+### **2. Service Registry**
+
+```typescript
+// Registry para gerenciar instâncias de services
+class ServiceRegistry {
+  private services = new Map<string, any>();
+
+  register<T>(name: string, service: T): void {
+    this.services.set(name, service);
+  }
+
+  get<T>(name: string): T {
+    return this.services.get(name);
+  }
+}
+
+export const serviceRegistry = new ServiceRegistry();
+```
+
+### **3. Service Metrics**
+
+```typescript
+// Métricas de performance para services
+interface ServiceMetrics {
+  name: string;
+  methodName: string;
+  executionTime: number;
+  success: boolean;
+  errorType?: string;
+}
+
+class MetricsCollector {
+  static collect(
+    serviceName: string,
+    methodName: string,
+    executionTime: number,
+    success: boolean,
+    errorType?: string
+  ): void {
+    const metrics: ServiceMetrics = {
+      name: serviceName,
+      methodName,
+      executionTime,
+      success,
+      errorType,
+    };
+
+    // Enviar métricas para sistema de monitoramento
+    logger.info('Service metrics:', metrics);
+  }
+}
+```
+
+## 🎯 Conclusão
+
+A arquitetura de Services no projeto está bem estruturada e segue padrões consistentes. O uso de **Promise pattern** para error handling, **logging estruturado**, **validação robusta** e **encapsulamento** de lógica de negócio garante código limpo e maintível.
+
+As principais melhorias seriam implementar **Base Service**, **Service Registry** e **Service Metrics** para tornar o sistema ainda mais robusto e observável.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

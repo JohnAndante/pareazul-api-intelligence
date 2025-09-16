@@ -7,54 +7,54 @@ export class AssistantController {
      * Endpoint para processar mensagem de chat
      */
     async processMessage(req: Request, res: Response): Promise<void> {
-        try {
-            const { message, payload, assistant_id } = req.body;
+        const { message, payload, assistant_id } = req.body;
 
-            if (!message || !payload) {
-                res.status(400).json({
-                    error: 'Missing required fields: message and payload are required'
-                });
-                return;
-            }
-
-            logger.info(`[AssistantController] Processing message from user ${payload.usuario_id}`);
-
-            const result = await processAssistantMessage(message, payload, assistant_id);
-
-            res.json(result);
-        } catch (error) {
-            logger.error('[AssistantController] Error processing message:', error);
-
-            const message = error instanceof Error ? error.message : 'An internal server error occurred.';
-
-            if (message.includes('validation')) {
-                res.status(400).json({ error: 'Invalid request data' });
-            } else {
-                res.status(500).json({ error: 'An internal server error occurred.' });
-            }
+        if (!message || !payload) {
+            res.status(400).json({
+                error: 'Missing required fields: message and payload are required'
+            });
+            return;
         }
+
+        logger.info(`[AssistantController] Processing message from user ${payload.usuario_id}`);
+
+        return processAssistantMessage(message, payload, assistant_id)
+            .then(result => {
+                res.json(result);
+            })
+            .catch(error => {
+                logger.error('[AssistantController] Error processing message:', error);
+
+                const errorMessage = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+                if (errorMessage.includes('validation')) {
+                    res.status(400).json({ error: 'Invalid request data' });
+                } else {
+                    res.status(500).json({ error: 'An internal server error occurred.' });
+                }
+            });
     }
 
     /**
      * Endpoint para webhook
      */
     async webhook(req: Request, res: Response): Promise<void> {
-        try {
-            logger.info(`[AssistantController] Processing webhook request`);
+        logger.info(`[AssistantController] Processing webhook request`);
 
-            const result = await processWebhookRequest(req.body);
+        return processWebhookRequest(req.body)
+            .then(result => {
+                res.json(result);
+            })
+            .catch(error => {
+                logger.error('[AssistantController] Error processing webhook:', error);
 
-            res.json(result);
-        } catch (error) {
-            logger.error('[AssistantController] Error processing webhook:', error);
-
-            res.status(500).json({
-                error: 'An internal server error occurred.',
-                message: "Desculpe, houve um erro interno e não consegui completar sua solicitação. Por favor, tente novamente.",
-                message_date: new Date().toISOString(),
-                assistant_id: req.body.assistant_id || 'error'
+                res.status(500).json({
+                    error: 'An internal server error occurred.',
+                    message: "Desculpe, houve um erro interno e não consegui completar sua solicitação. Por favor, tente novamente.",
+                    message_date: new Date().toISOString(),
+                    assistant_id: req.body.assistant_id || 'error'
+                });
             });
-        }
     }
 
     /**

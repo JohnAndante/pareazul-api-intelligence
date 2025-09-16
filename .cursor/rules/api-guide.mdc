@@ -1,0 +1,454 @@
+---
+alwaysApply: false
+description: Guia Completo de APIs - Integrações Externas
+---
+
+# 🌐 Guia Completo de APIs - Integrações Externas
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para APIs no projeto Pare Azul API Intelligence. As APIs são responsáveis por integrar com serviços externos do Pareazul, fornecendo uma camada de abstração limpa e consistente para comunicação HTTP.
+
+## 🎯 Propósito das APIs
+
+### **1. Integração Externa**
+
+- **Comunicação HTTP** com serviços Pareazul
+- **Abstração de endpoints** externos
+- **Padronização de requests/responses**
+
+### **2. Camada de Dados**
+
+- **Transformação de dados** entre formatos
+- **Validação de responses** externas
+- **Tratamento de erros** específicos
+
+### **3. Reutilização**
+
+- **Funções puras** e reutilizáveis
+- **Interface consistente** para services
+- **Facilita testes** e mocking
+
+## 🏗️ Estrutura Padrão
+
+### **1. Template Base**
+
+```typescript
+// src/api/[domain].api.ts
+import axiosWebservice from "../helpers/axiosWebservice";
+import { logger as loggerUtil } from "../utils/logger.util";
+import { [DomainType] } from "../types/[domain].types";
+
+const logger = loggerUtil.child({ service: '[Domain]Api' });
+
+export const [functionName] = async (
+    param1: string,
+    param2: string,
+    // ... outros parâmetros
+): Promise<[ReturnType]> => {
+    const path = `/v4/[endpoint]/[path]`;
+
+    return axiosWebservice.get(path, {
+        headers: { 'x-access-key': token },
+    })
+        .then(response => {
+            // Validação e transformação de dados
+            if (!response.data || !Array.isArray(response.data)) {
+                return [];
+            }
+
+            const { data } = response;
+            return data.map(item => transformData(item));
+        })
+        .catch(error => {
+            logger.error("[functionName] Error:", error);
+            throw error;
+        });
+};
+```
+
+### **2. Padrões Obrigatórios**
+
+```typescript
+// ✅ SEMPRE usar Promise ao invés de try/catch
+export const fetchData = async (): Promise<DataType[]> => {
+  return axiosWebservice
+    .get('/endpoint')
+    .then(response => {
+      // Processamento dos dados
+      return response.data;
+    })
+    .catch(error => {
+      logger.error('[fetchData] Error:', error);
+      throw error;
+    });
+};
+
+// ❌ NUNCA usar try/catch em APIs
+export const fetchDataWrong = async (): Promise<DataType[]> => {
+  try {
+    const response = await axiosWebservice.get('/endpoint');
+    return response.data;
+  } catch (error) {
+    logger.error('[fetchDataWrong] Error:', error);
+    throw error;
+  }
+};
+```
+
+## 🔧 Componentes Obrigatórios
+
+### **1. Imports Padrão**
+
+```typescript
+// Imports obrigatórios para todas as APIs
+import axiosWebservice from "../helpers/axiosWebservice";
+import { logger as loggerUtil } from "../utils/logger.util";
+import { [DomainType] } from "../types/[domain].types";
+
+// Logger específico do domínio
+const logger = loggerUtil.child({ service: '[Domain]Api' });
+```
+
+### **2. Estrutura de Função**
+
+```typescript
+export const functionName = async (
+  // Parâmetros tipados
+  param1: string,
+  param2: string,
+  token: string
+): Promise<ReturnType> => {
+  // 1. Construção do path
+  const path = `/v4/[endpoint]/[path]`;
+
+  // 2. Chamada HTTP
+  return axiosWebservice
+    .get(path, {
+      headers: { 'x-access-key': token },
+    })
+    .then(response => {
+      // 3. Validação de dados
+      if (!response.data || !Array.isArray(response.data)) {
+        return [];
+      }
+
+      // 4. Transformação de dados
+      const { data } = response;
+      return data.map(item => transformData(item));
+    })
+    .catch(error => {
+      // 5. Log e re-throw
+      logger.error('[functionName] Error:', error);
+      throw error;
+    });
+};
+```
+
+### **3. Headers Padrão**
+
+```typescript
+// Headers obrigatórios para Pareazul APIs
+const headers = {
+  'x-access-key': token, // Token de autenticação
+  'Content-Type': 'application/json', // Para POST/PUT
+};
+```
+
+## 📊 Tipos de APIs Implementadas
+
+### **1. Activation API**
+
+```typescript
+// src/api/activation.api.ts
+export const fetchVehicleCurrentActivations = async (
+  plate: string,
+  prefectureId: string,
+  timezone: string,
+  prefectureToken: string
+): Promise<VehicleActivation[]> => {
+  const path = `/v4/prefeituras/${prefectureId}/ativacoes/validas?placa=${plate}`;
+
+  return axiosWebservice
+    .get(path, {
+      headers: { 'x-access-key': prefectureToken },
+    })
+    .then(response => {
+      if (!response.data || !Array.isArray(response.data)) {
+        return [];
+      }
+
+      const { data: activations } = response;
+      const orderedActivations = activations.sort((a, b) => {
+        return (
+          new Date(b.data_inicio_ativacao).getTime() - new Date(a.data_inicio_ativacao).getTime()
+        );
+      });
+
+      return orderedActivations.map(activation => {
+        return extractActivationData(activation, timezone);
+      });
+    })
+    .catch(error => {
+      logger.error('[fetchVehicleCurrentActivations] Error:', error);
+      throw error;
+    });
+};
+```
+
+**Características:**
+
+- **Ordenação de dados** por data
+- **Transformação** com utils específicos
+- **Validação** de array de dados
+
+### **2. Vehicle API**
+
+```typescript
+// src/api/vehicle.api.ts
+export const fetchUserVehicles = (userId: string, prefectureToken: string) =>
+  new Promise<APIVehicle[]>((resolve, reject) => {
+    const path = `/v4/usuarios/${userId}/veiculos`;
+
+    return axiosWebservice
+      .get(path, {
+        headers: { 'x-access-key': prefectureToken },
+      })
+      .then(response => {
+        if (response.status !== 200) {
+          return [];
+        }
+
+        const vehicles: Vehicle[] = response.data;
+        if (!Array.isArray(vehicles)) {
+          return [];
+        }
+
+        const parsedVehicles: APIVehicle[] = vehicles.map(v => ({
+          plate: v.placa,
+          model: v.modelo.toLowerCase(),
+          vehicle_type: v.tipo_veiculo,
+          vehicle_type_id: v.tipo_veiculo_id,
+        }));
+
+        return parsedVehicles;
+      })
+      .then(resolve)
+      .catch(error => {
+        const errorMessage = error.response?.data?.message || error.message || error;
+        reject(errorMessage);
+      });
+  });
+```
+
+**Características:**
+
+- **Promise explícita** com resolve/reject
+- **Mapeamento de dados** para formato interno
+- **Tratamento de status** HTTP
+
+### **3. Prefecture API**
+
+```typescript
+// src/api/prefecture.api.ts
+export const fetchPrefectureRules = (prefectureId: string, prefectureToken: string) =>
+  new Promise<Rule[]>((resolve, reject) => {
+    const path = `/v4/prefeituras/${prefectureId}/regras`;
+
+    return axiosWebservice
+      .get(path, {
+        headers: { 'x-access-key': prefectureToken },
+      })
+      .then(response => {
+        const { data: rules } = response;
+
+        if (!Array.isArray(rules) || rules.length === 0) {
+          throw new Error('No rules found for prefecture.');
+        }
+
+        return rules;
+      })
+      .then(resolve)
+      .catch(error => {
+        const errorMessage = error.response?.data?.message || error.message || error;
+        logger.error('[fetchPrefectureRules] Error:', error);
+        reject(errorMessage);
+      });
+  });
+```
+
+**Características:**
+
+- **Validação de dados** obrigatórios
+- **Error handling** específico
+- **Promise pattern** com resolve/reject
+
+## 🎯 Melhores Práticas
+
+### **1. Nomenclatura**
+
+```typescript
+// ✅ BOM: Nomes descritivos e consistentes
+export const fetchVehicleCurrentActivations = async () => {};
+export const activateVehicle = async () => {};
+export const fetchUserVehicles = async () => {};
+
+// ❌ RUIM: Nomes genéricos ou inconsistentes
+export const getData = async () => {};
+export const fetchVehicles = async () => {};
+export const activate = async () => {};
+```
+
+### **2. Tipagem**
+
+```typescript
+// ✅ BOM: Tipos explícitos e específicos
+export const fetchData = async (userId: string, token: string): Promise<VehicleActivation[]> => {};
+
+// ❌ RUIM: Tipos genéricos ou any
+export const fetchData = async (userId: any, token: any): Promise<any> => {};
+```
+
+### **3. Error Handling**
+
+```typescript
+// ✅ BOM: Log específico e re-throw
+.catch(error => {
+    logger.error("[functionName] Error:", error);
+    throw error;
+});
+
+// ❌ RUIM: Log genérico ou tratamento inadequado
+.catch(error => {
+    console.log("Error:", error);
+    return null;
+});
+```
+
+### **4. Validação de Dados**
+
+```typescript
+// ✅ BOM: Validação robusta
+.then(response => {
+    if (!response.data || !Array.isArray(response.data)) {
+        return [];
+    }
+
+    const { data } = response;
+    return data.map(item => transformData(item));
+});
+
+// ❌ RUIM: Sem validação
+.then(response => {
+    return response.data.map(item => transformData(item));
+});
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Chamada de API**
+
+```
+Service → API Function → axiosWebservice → External Service
+```
+
+### **2. Processamento**
+
+```
+External Response → Validation → Transformation → Return
+```
+
+### **3. Error Flow**
+
+```
+Error → Log → Re-throw → Service Error Handling
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Consistência**
+
+- **Padrão uniforme** em todas as APIs
+- **Headers padronizados** para Pareazul
+- **Error handling** consistente
+
+### **2. Reutilização**
+
+- **Funções puras** e testáveis
+- **Interface clara** para services
+- **Facilita mocking** em testes
+
+### **3. Manutenibilidade**
+
+- **Separação clara** de responsabilidades
+- **Logging estruturado** por domínio
+- **Tipagem forte** em toda a cadeia
+
+### **4. Performance**
+
+- **Promise pattern** otimizado
+- **Validação eficiente** de dados
+- **Cache-friendly** design
+
+## 📈 Recomendações de Melhoria
+
+### **1. API Client Factory**
+
+```typescript
+// Criar factory para diferentes tipos de cliente
+class APIClientFactory {
+  static createPareazulClient(token: string) {
+    return axios.create({
+      baseURL: process.env.PAREAZUL_API_URL,
+      headers: { 'x-access-key': token },
+      timeout: 30000,
+    });
+  }
+}
+```
+
+### **2. Response Interceptors**
+
+```typescript
+// Interceptor para padronizar responses
+axiosWebservice.interceptors.response.use(
+  response => {
+    // Validação automática de response
+    if (!response.data) {
+      throw new Error('Empty response from API');
+    }
+    return response;
+  },
+  error => {
+    // Log automático de erros
+    logger.error('API Error:', error);
+    return Promise.reject(error);
+  }
+);
+```
+
+### **3. Retry Logic**
+
+```typescript
+// Implementar retry automático para falhas temporárias
+const retryRequest = async (fn: () => Promise<any>, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+};
+```
+
+## 🎯 Conclusão
+
+A arquitetura de APIs no projeto está bem estruturada e segue padrões consistentes. O uso de **Promise pattern** ao invés de try/catch, **tipagem forte**, **logging estruturado** e **validação robusta** garante código limpo e maintível.
+
+As principais melhorias seriam implementar **API Client Factory**, **Response Interceptors** e **Retry Logic** para tornar o sistema ainda mais robusto.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

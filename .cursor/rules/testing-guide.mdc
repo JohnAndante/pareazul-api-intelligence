@@ -1,0 +1,1128 @@
+---
+alwaysApply: false
+description: Guia Completo de Testing - Testes Automatizados
+---
+
+# 🧪 Guia Completo de Testing - Testes Automatizados
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para Testing no projeto Pare Azul API Intelligence. O sistema implementa **testes automatizados** em múltiplas camadas incluindo unit tests, integration tests, e2e tests, com foco em **cobertura abrangente**, **mocking inteligente** e **CI/CD integration**.
+
+## 🎯 Propósito dos Testes
+
+### **1. Qualidade de Código**
+
+- **Detecção precoce** de bugs
+- **Refactoring seguro** com confiança
+- **Documentação viva** do comportamento
+- **Cobertura abrangente** de funcionalidades
+
+### **2. Confiabilidade**
+
+- **Regressão** prevenida
+- **Integração** validada
+- **Performance** monitorada
+- **Segurança** verificada
+
+### **3. Desenvolvimento Ágil**
+
+- **Feedback rápido** durante desenvolvimento
+- **Deploy seguro** em produção
+- **Manutenibilidade** alta
+- **Onboarding** facilitado
+
+## 🏗️ Estrutura Padrão
+
+### **1. Organização de Arquivos**
+
+```
+src/
+├── 🧪 __tests__/                 # Testes organizados por domínio
+│   ├── unit/                     # Testes unitários
+│   │   ├── utils/               # Testes de utilitários
+│   │   ├── services/            # Testes de serviços
+│   │   ├── controllers/         # Testes de controllers
+│   │   └── middleware/          # Testes de middleware
+│   ├── integration/             # Testes de integração
+│   │   ├── api/                # Testes de APIs
+│   │   ├── database/           # Testes de banco
+│   │   └── external/           # Testes de integrações externas
+│   └── e2e/                    # Testes end-to-end
+│       ├── user-flows/         # Fluxos de usuário
+│       └── scenarios/          # Cenários completos
+├── 🛠️ test-utils/               # Utilitários de teste
+│   ├── mocks/                  # Mocks e fixtures
+│   ├── helpers/                # Helpers de teste
+│   └── setup/                  # Configuração de testes
+└── 📊 coverage/                # Relatórios de cobertura
+    ├── lcov-report/            # Relatório HTML
+    └── coverage-summary.json   # Resumo de cobertura
+```
+
+### **2. Convenções de Nomenclatura**
+
+```typescript
+// ✅ TEST FILES: [name].test.ts ou [name].spec.ts
+src / __tests__ / unit / utils / validation.util.test.ts;
+src / __tests__ / integration / api / assistant.api.test.ts;
+src / __tests__ / e2e / user - flows / chat - flow.e2e.test.ts;
+
+// ✅ TEST DESCRIBE: Descrição clara do que está sendo testado
+describe('ValidationUtil', () => {});
+describe('AssistantController', () => {});
+describe('Chat Flow E2E', () => {});
+
+// ✅ TEST CASES: should + comportamento esperado
+it('should validate email correctly', () => {});
+it('should return error for invalid input', () => {});
+it('should handle authentication failure', () => {});
+```
+
+## 🔧 Padrões de Testes Unitários
+
+### **1. Estrutura de Teste Unitário**
+
+```typescript
+// src/__tests__/unit/utils/validation.util.test.ts
+import { ValidationUtil } from '../../../utils/validation.util';
+import { z } from 'zod';
+
+describe('ValidationUtil', () => {
+  describe('validate', () => {
+    it('should validate data successfully', () => {
+      // Arrange
+      const schema = z.object({ name: z.string() });
+      const data = { name: 'test' };
+
+      // Act
+      const result = ValidationUtil.validate(schema, data);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(data);
+    });
+
+    it('should return errors for invalid data', () => {
+      // Arrange
+      const schema = z.object({ name: z.string() });
+      const data = { name: 123 };
+
+      // Act
+      const result = ValidationUtil.validate(schema, data);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('name');
+    });
+
+    it('should handle validation errors gracefully', () => {
+      // Arrange
+      const schema = null as any;
+      const data = { name: 'test' };
+
+      // Act
+      const result = ValidationUtil.validate(schema, data);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.errors).toEqual(['Validation failed']);
+    });
+  });
+
+  describe('sanitizeHtml', () => {
+    it('should remove script tags', () => {
+      // Arrange
+      const input = '<script>alert("xss")</script><p>Safe content</p>';
+
+      // Act
+      const result = ValidationUtil.sanitizeHtml(input);
+
+      // Assert
+      expect(result).toBe('<p>Safe content</p>');
+      expect(result).not.toContain('<script>');
+    });
+
+    it('should remove javascript: protocols', () => {
+      // Arrange
+      const input = '<a href="javascript:alert(1)">Click me</a>';
+
+      // Act
+      const result = ValidationUtil.sanitizeHtml(input);
+
+      // Assert
+      expect(result).not.toContain('javascript:');
+    });
+  });
+
+  describe('isValidEmail', () => {
+    it.each([
+      ['user@example.com', true],
+      ['test.email@domain.co.uk', true],
+      ['invalid-email', false],
+      ['@domain.com', false],
+      ['user@', false],
+    ])('should validate email %s as %s', (email, expected) => {
+      // Act
+      const result = ValidationUtil.isValidEmail(email);
+
+      // Assert
+      expect(result).toBe(expected);
+    });
+  });
+});
+```
+
+### **2. Teste de Services**
+
+```typescript
+// src/__tests__/unit/services/session.service.test.ts
+import { SessionService } from '../../../services/session.service';
+import { ChatRepository } from '../../../repositories/chat.repository';
+import { MemoryService } from '../../../services/memory.service';
+
+// Mock das dependências
+jest.mock('../../../repositories/chat.repository');
+jest.mock('../../../services/memory.service');
+
+describe('SessionService', () => {
+  let sessionService: SessionService;
+  let mockChatRepository: jest.Mocked<ChatRepository>;
+  let mockMemoryService: jest.Mocked<MemoryService>;
+
+  beforeEach(() => {
+    mockChatRepository = new ChatRepository() as jest.Mocked<ChatRepository>;
+    mockMemoryService = new MemoryService() as jest.Mocked<MemoryService>;
+    sessionService = new SessionService(mockChatRepository, mockMemoryService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('createSession', () => {
+    it('should create new session when none exists', async () => {
+      // Arrange
+      const userId = 'user123';
+      const payload = { usuario_id: userId };
+      mockChatRepository.findActiveSession.mockResolvedValue(null);
+      mockChatRepository.createChat.mockResolvedValue({ id: 'session123' } as any);
+
+      // Act
+      const result = await sessionService.createSession(userId, payload);
+
+      // Assert
+      expect(result.isNewSession).toBe(true);
+      expect(result.sessionId).toBe('session123');
+      expect(mockChatRepository.createChat).toHaveBeenCalledWith(userId, payload);
+    });
+
+    it('should return existing session when found', async () => {
+      // Arrange
+      const userId = 'user123';
+      const payload = { usuario_id: userId };
+      const existingSession = { id: 'existing123' };
+      mockChatRepository.findActiveSession.mockResolvedValue(existingSession as any);
+
+      // Act
+      const result = await sessionService.createSession(userId, payload);
+
+      // Assert
+      expect(result.isNewSession).toBe(false);
+      expect(result.sessionId).toBe('existing123');
+      expect(mockChatRepository.createChat).not.toHaveBeenCalled();
+    });
+
+    it('should handle repository errors gracefully', async () => {
+      // Arrange
+      const userId = 'user123';
+      const payload = { usuario_id: userId };
+      mockChatRepository.findActiveSession.mockRejectedValue(new Error('Database error'));
+
+      // Act & Assert
+      await expect(sessionService.createSession(userId, payload)).rejects.toThrow('Database error');
+    });
+  });
+});
+```
+
+### **3. Teste de Controllers**
+
+```typescript
+// src/__tests__/unit/controllers/assistant.controller.test.ts
+import { Request, Response } from 'express';
+import { AssistantController } from '../../../controllers/assistant.controller';
+import { processAssistantMessage } from '../../../agents/assistant';
+
+// Mock das dependências
+jest.mock('../../../agents/assistant');
+
+describe('AssistantController', () => {
+  let controller: AssistantController;
+  let mockReq: Partial<Request>;
+  let mockRes: Partial<Response>;
+  let mockNext: jest.Mock;
+
+  beforeEach(() => {
+    controller = new AssistantController();
+    mockReq = {
+      body: {},
+      headers: {},
+    };
+    mockRes = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+    };
+    mockNext = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('processMessage', () => {
+    it('should process message successfully', async () => {
+      // Arrange
+      mockReq.body = {
+        message: 'Hello',
+        payload: { usuario_id: 'user123' },
+      };
+      const mockResult = { message: 'Response', assistant_id: 'assistant123' };
+      (processAssistantMessage as jest.Mock).mockResolvedValue(mockResult);
+
+      // Act
+      await controller.processMessage(mockReq as Request, mockRes as Response);
+
+      // Assert
+      expect(processAssistantMessage).toHaveBeenCalledWith(
+        'Hello',
+        { usuario_id: 'user123' },
+        undefined
+      );
+      expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it('should return 400 for missing required fields', async () => {
+      // Arrange
+      mockReq.body = { message: 'Hello' }; // Missing payload
+
+      // Act
+      await controller.processMessage(mockReq as Request, mockRes as Response);
+
+      // Assert
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: 'Missing required fields: message and payload are required',
+      });
+    });
+
+    it('should handle processing errors', async () => {
+      // Arrange
+      mockReq.body = {
+        message: 'Hello',
+        payload: { usuario_id: 'user123' },
+      };
+      (processAssistantMessage as jest.Mock).mockRejectedValue(new Error('Processing failed'));
+
+      // Act
+      await controller.processMessage(mockReq as Request, mockRes as Response);
+
+      // Assert
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        error: 'An internal server error occurred.',
+      });
+    });
+  });
+});
+```
+
+## 🔗 Padrões de Testes de Integração
+
+### **1. Teste de API**
+
+```typescript
+// src/__tests__/integration/api/assistant.api.test.ts
+import request from 'supertest';
+import { app } from '../../../index';
+import { redis } from '../../../utils/redis.util';
+import { supabase } from '../../../utils/supabase.util';
+
+// Mock das dependências externas
+jest.mock('../../../utils/redis.util');
+jest.mock('../../../utils/supabase.util');
+
+describe('Assistant API Integration', () => {
+  beforeEach(async () => {
+    // Setup de dados de teste
+    await setupTestData();
+  });
+
+  afterEach(async () => {
+    // Cleanup de dados de teste
+    await cleanupTestData();
+  });
+
+  describe('POST /api/assistant/message', () => {
+    it('should process message and return response', async () => {
+      // Arrange
+      const messageData = {
+        message: 'Como funciona a zona azul?',
+        payload: {
+          prefeitura_id: '1',
+          usuario_id: 'test-user-123',
+          usuario_nome: 'Test User',
+          usuario_email: 'test@example.com',
+          usuario_cpf: '12345678901',
+        },
+      };
+
+      // Act
+      const response = await request(app)
+        .post('/api/assistant/message')
+        .set('Authorization', 'Bearer test-token')
+        .send(messageData);
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('assistant_id');
+      expect(response.body.message).toContain('zona azul');
+    });
+
+    it('should handle authentication failure', async () => {
+      // Arrange
+      const messageData = {
+        message: 'Hello',
+        payload: { usuario_id: 'user123' },
+      };
+
+      // Act
+      const response = await request(app).post('/api/assistant/message').send(messageData); // No authorization header
+
+      // Assert
+      expect(response.status).toBe(401);
+      expect(response.body).toHaveProperty('error');
+      expect(response.body.code).toBe('MISSING_AUTH_HEADER');
+    });
+
+    it('should handle rate limiting', async () => {
+      // Arrange
+      const messageData = {
+        message: 'Hello',
+        payload: { usuario_id: 'user123' },
+      };
+
+      // Act - Make multiple requests quickly
+      const promises = Array(10)
+        .fill(null)
+        .map(() =>
+          request(app)
+            .post('/api/assistant/message')
+            .set('Authorization', 'Bearer test-token')
+            .send(messageData)
+        );
+
+      const responses = await Promise.all(promises);
+
+      // Assert - Some requests should be rate limited
+      const rateLimitedResponses = responses.filter(r => r.status === 429);
+      expect(rateLimitedResponses.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('POST /api/assistant/webhook', () => {
+    it('should process webhook request', async () => {
+      // Arrange
+      const webhookData = {
+        session_id: 'session123',
+        payload: {
+          prefeitura_id: '1',
+          usuario_id: 'test-user-123',
+          usuario_nome: 'Test User',
+          usuario_email: 'test@example.com',
+          usuario_cpf: '12345678901',
+        },
+        prefecture_user_token: 'token123',
+        message: 'Hello from webhook',
+        message_date: new Date().toISOString(),
+        message_date_local: new Date().toISOString(),
+        assistant_id: 'assistant123',
+      };
+
+      // Act
+      const response = await request(app).post('/api/assistant/webhook').send(webhookData);
+
+      // Assert
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body).toHaveProperty('assistant_id');
+    });
+  });
+});
+```
+
+### **2. Teste de Database**
+
+```typescript
+// src/__tests__/integration/database/chat.repository.test.ts
+import { ChatRepository } from '../../../repositories/chat.repository';
+import { supabase } from '../../../utils/supabase.util';
+
+describe('ChatRepository Integration', () => {
+  let repository: ChatRepository;
+
+  beforeEach(() => {
+    repository = new ChatRepository();
+  });
+
+  afterEach(async () => {
+    // Cleanup test data
+    await supabase.from('assistant_chat_details').delete().neq('id', '');
+  });
+
+  describe('createChat', () => {
+    it('should create new chat session', async () => {
+      // Arrange
+      const userId = 'test-user-123';
+      const payload = {
+        prefeitura_id: '1',
+        usuario_id: userId,
+        usuario_nome: 'Test User',
+        usuario_email: 'test@example.com',
+        usuario_cpf: '12345678901',
+      };
+
+      // Act
+      const result = await repository.createChat(userId, payload);
+
+      // Assert
+      expect(result).toHaveProperty('id');
+      expect(result.user_id).toBe(userId);
+      expect(result.is_active).toBe(true);
+
+      // Verify in database
+      const { data } = await supabase
+        .from('assistant_chat_details')
+        .select('*')
+        .eq('id', result.id)
+        .single();
+
+      expect(data).toBeTruthy();
+      expect(data.user_id).toBe(userId);
+    });
+  });
+
+  describe('findActiveSession', () => {
+    it('should find active session by user ID', async () => {
+      // Arrange
+      const userId = 'test-user-456';
+      const payload = {
+        prefeitura_id: '1',
+        usuario_id: userId,
+        usuario_nome: 'Test User 2',
+        usuario_email: 'test2@example.com',
+        usuario_cpf: '12345678902',
+      };
+
+      const createdSession = await repository.createChat(userId, payload);
+
+      // Act
+      const result = await repository.findActiveSession(userId);
+
+      // Assert
+      expect(result).toBeTruthy();
+      expect(result!.id).toBe(createdSession.id);
+      expect(result!.user_id).toBe(userId);
+      expect(result!.is_active).toBe(true);
+    });
+
+    it('should return null when no active session found', async () => {
+      // Arrange
+      const userId = 'non-existent-user';
+
+      // Act
+      const result = await repository.findActiveSession(userId);
+
+      // Assert
+      expect(result).toBeNull();
+    });
+  });
+});
+```
+
+## 🎭 Padrões de Mocking
+
+### **1. Mock de Services**
+
+```typescript
+// src/test-utils/mocks/service.mocks.ts
+export const createMockMemoryService = (): jest.Mocked<MemoryService> => ({
+  getSessionCache: jest.fn(),
+  setSessionCache: jest.fn(),
+  getMemoryBuffer: jest.fn(),
+  addToMemoryBuffer: jest.fn(),
+  clearMemoryBuffer: jest.fn(),
+});
+
+export const createMockSessionService = (): jest.Mocked<SessionService> => ({
+  createSession: jest.fn(),
+  getSession: jest.fn(),
+  inactivateSession: jest.fn(),
+  inactivateOldSessions: jest.fn(),
+});
+
+export const createMockActivationService = (): jest.Mocked<ActivationService> => ({
+  checkVehicleCurrentActivations: jest.fn(),
+  registerVehicleActivation: jest.fn(),
+  getActivationRules: jest.fn(),
+});
+```
+
+### **2. Mock de External APIs**
+
+```typescript
+// src/test-utils/mocks/api.mocks.ts
+export const mockAxiosWebservice = {
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+  interceptors: {
+    request: { use: jest.fn() },
+    response: { use: jest.fn() },
+  },
+};
+
+export const mockSupabaseClient = {
+  from: jest.fn().mockReturnThis(),
+  select: jest.fn().mockReturnThis(),
+  insert: jest.fn().mockReturnThis(),
+  update: jest.fn().mockReturnThis(),
+  delete: jest.fn().mockReturnThis(),
+  eq: jest.fn().mockReturnThis(),
+  single: jest.fn(),
+  rpc: jest.fn(),
+};
+
+export const mockRedisClient = {
+  get: jest.fn(),
+  set: jest.fn(),
+  setEx: jest.fn(),
+  del: jest.fn(),
+  incr: jest.fn(),
+  decr: jest.fn(),
+  expire: jest.fn(),
+  lPush: jest.fn(),
+  lRange: jest.fn(),
+  lTrim: jest.fn(),
+  ping: jest.fn(),
+};
+```
+
+### **3. Mock de LangChain**
+
+```typescript
+// src/test-utils/mocks/langchain.mocks.ts
+export const mockAgentExecutor = {
+  invoke: jest.fn(),
+  stream: jest.fn(),
+  streamEvents: jest.fn(),
+};
+
+export const mockOpenAI = {
+  embeddings: {
+    create: jest.fn(),
+  },
+  chat: {
+    completions: {
+      create: jest.fn(),
+    },
+  },
+};
+
+export const mockTool = {
+  name: 'test_tool',
+  description: 'Test tool',
+  invoke: jest.fn(),
+};
+```
+
+## 🎯 Padrões de E2E Tests
+
+### **1. Teste de Fluxo Completo**
+
+```typescript
+// src/__tests__/e2e/user-flows/chat-flow.e2e.test.ts
+import request from 'supertest';
+import { app } from '../../../index';
+
+describe('Chat Flow E2E', () => {
+  let sessionId: string;
+  let userId: string;
+
+  beforeEach(async () => {
+    // Setup test user and session
+    userId = 'e2e-test-user-' + Date.now();
+    sessionId = await createTestSession(userId);
+  });
+
+  afterEach(async () => {
+    // Cleanup test data
+    await cleanupTestSession(sessionId);
+  });
+
+  it('should complete full chat flow', async () => {
+    // Step 1: Send initial message
+    const message1 = await request(app)
+      .post('/api/assistant/message')
+      .set('Authorization', `Bearer ${userId}`)
+      .send({
+        message: 'Como funciona a zona azul?',
+        payload: {
+          prefeitura_id: '1',
+          usuario_id: userId,
+          usuario_nome: 'E2E Test User',
+          usuario_email: 'e2e@test.com',
+          usuario_cpf: '12345678901',
+        },
+      });
+
+    expect(message1.status).toBe(200);
+    expect(message1.body.message).toContain('zona azul');
+
+    // Step 2: Continue conversation
+    const message2 = await request(app)
+      .post('/api/assistant/message')
+      .set('Authorization', `Bearer ${userId}`)
+      .send({
+        message: 'Quanto custa ativar por 2 horas?',
+        payload: {
+          prefeitura_id: '1',
+          usuario_id: userId,
+          usuario_nome: 'E2E Test User',
+          usuario_email: 'e2e@test.com',
+          usuario_cpf: '12345678901',
+        },
+      });
+
+    expect(message2.status).toBe(200);
+    expect(message2.body.message).toContain('2 horas');
+
+    // Step 3: Test webhook
+    const webhook = await request(app)
+      .post('/api/assistant/webhook')
+      .send({
+        session_id: sessionId,
+        payload: {
+          prefeitura_id: '1',
+          usuario_id: userId,
+          usuario_nome: 'E2E Test User',
+          usuario_email: 'e2e@test.com',
+          usuario_cpf: '12345678901',
+        },
+        prefecture_user_token: 'test-token',
+        message: 'Test webhook message',
+        message_date: new Date().toISOString(),
+        message_date_local: new Date().toISOString(),
+        assistant_id: 'test-assistant',
+      });
+
+    expect(webhook.status).toBe(200);
+    expect(webhook.body).toHaveProperty('message');
+  });
+
+  it('should handle authentication flow', async () => {
+    // Test without auth
+    const response = await request(app)
+      .post('/api/assistant/message')
+      .send({
+        message: 'Hello',
+        payload: { usuario_id: userId },
+      });
+
+    expect(response.status).toBe(401);
+
+    // Test with invalid auth
+    const response2 = await request(app)
+      .post('/api/assistant/message')
+      .set('Authorization', 'Bearer invalid-token')
+      .send({
+        message: 'Hello',
+        payload: { usuario_id: userId },
+      });
+
+    expect(response2.status).toBe(401);
+  });
+});
+```
+
+## 📊 Configuração de Testes
+
+### **1. Jest Configuration**
+
+```typescript
+// jest.config.js
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  roots: ['<rootDir>/src'],
+  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.spec.ts'],
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts', '!src/__tests__/**', '!src/test-utils/**'],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  setupFilesAfterEnv: ['<rootDir>/src/test-utils/setup/jest.setup.ts'],
+  testTimeout: 30000,
+  moduleNameMapping: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
+  globals: {
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
+    },
+  },
+};
+```
+
+### **2. Test Setup**
+
+```typescript
+// src/test-utils/setup/jest.setup.ts
+import { jest } from '@jest/globals';
+
+// Mock environment variables
+process.env.NODE_ENV = 'test';
+process.env.REDIS_URL = 'redis://localhost:6379';
+process.env.SUPABASE_URL = 'https://test.supabase.co';
+process.env.SUPABASE_ANON_KEY = 'test-key';
+process.env.OPENAI_API_KEY = 'test-openai-key';
+
+// Global test timeout
+jest.setTimeout(30000);
+
+// Mock console methods to reduce noise in tests
+global.console = {
+  ...console,
+  log: jest.fn(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
+
+// Setup test database
+beforeAll(async () => {
+  await setupTestDatabase();
+});
+
+afterAll(async () => {
+  await cleanupTestDatabase();
+});
+```
+
+### **3. Test Helpers**
+
+```typescript
+// src/test-utils/helpers/test.helpers.ts
+export const createTestUser = (overrides: Partial<ChatPayload> = {}): ChatPayload => ({
+  prefeitura_id: '1',
+  prefeitura_sigla: 'TEST',
+  prefeitura_nome: 'Test City',
+  prefeitura_timezone: 'America/Sao_Paulo',
+  usuario_id: 'test-user-' + Date.now(),
+  usuario_nome: 'Test User',
+  usuario_email: 'test@example.com',
+  usuario_cpf: '12345678901',
+  ...overrides,
+});
+
+export const createTestSession = async (userId: string): Promise<string> => {
+  const repository = new ChatRepository();
+  const session = await repository.createChat(userId, createTestUser({ usuario_id: userId }));
+  return session.id;
+};
+
+export const cleanupTestSession = async (sessionId: string): Promise<void> => {
+  const repository = new ChatRepository();
+  await repository.inactivateSession(sessionId);
+};
+
+export const waitFor = (ms: number): Promise<void> => {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
+```
+
+## 🎯 Melhores Práticas
+
+### **1. Estrutura de Teste**
+
+```typescript
+// ✅ BOM: Arrange-Act-Assert pattern
+it('should validate email correctly', () => {
+  // Arrange
+  const email = 'user@example.com';
+
+  // Act
+  const result = ValidationUtil.isValidEmail(email);
+
+  // Assert
+  expect(result).toBe(true);
+});
+
+// ❌ RUIM: Teste sem estrutura clara
+it('should validate email', () => {
+  expect(ValidationUtil.isValidEmail('user@example.com')).toBe(true);
+});
+```
+
+### **2. Nomenclatura**
+
+```typescript
+// ✅ BOM: Descrições claras e específicas
+describe('ValidationUtil', () => {
+  describe('validate', () => {
+    it('should validate data successfully', () => {});
+    it('should return errors for invalid data', () => {});
+    it('should handle validation errors gracefully', () => {});
+  });
+});
+
+// ❌ RUIM: Descrições vagas
+describe('ValidationUtil', () => {
+  it('should work', () => {});
+  it('should handle errors', () => {});
+});
+```
+
+### **3. Mocking**
+
+```typescript
+// ✅ BOM: Mock específico e controlado
+const mockRepository = {
+  findActiveSession: jest.fn().mockResolvedValue(null),
+  createChat: jest.fn().mockResolvedValue({ id: 'session123' }),
+};
+
+// ❌ RUIM: Mock genérico demais
+const mockRepository = jest.fn();
+```
+
+### **4. Assertions**
+
+```typescript
+// ✅ BOM: Assertions específicas e claras
+expect(result.success).toBe(true);
+expect(result.data).toEqual(expectedData);
+expect(mockService.method).toHaveBeenCalledWith(expectedArgs);
+
+// ❌ RUIM: Assertions genéricas
+expect(result).toBeTruthy();
+expect(mockService.method).toHaveBeenCalled();
+```
+
+### **5. Cleanup**
+
+```typescript
+// ✅ BOM: Cleanup explícito
+afterEach(() => {
+  jest.clearAllMocks();
+  cleanupTestData();
+});
+
+// ❌ RUIM: Sem cleanup
+// Testes podem interferir uns nos outros
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Unit Tests**
+
+```
+Test File → Setup → Test Case → Mock Dependencies → Execute → Assert → Cleanup
+```
+
+### **2. Integration Tests**
+
+```
+Test File → Setup Database → Test API → Verify Database → Cleanup Database
+```
+
+### **3. E2E Tests**
+
+```
+Test File → Setup Environment → Execute Flow → Verify Results → Cleanup Environment
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Cobertura Abrangente**
+
+- **Unit tests** para lógica isolada
+- **Integration tests** para APIs e banco
+- **E2E tests** para fluxos completos
+- **Cobertura** de código alta
+
+### **2. Confiabilidade**
+
+- **Detecção precoce** de bugs
+- **Refactoring seguro**
+- **Regressão** prevenida
+- **Deploy** confiável
+
+### **3. Manutenibilidade**
+
+- **Testes** como documentação
+- **Estrutura** clara e organizada
+- **Mocks** reutilizáveis
+- **Helpers** centralizados
+
+### **4. Performance**
+
+- **Testes paralelos** quando possível
+- **Setup/teardown** eficiente
+- **Mocks** para dependências lentas
+- **CI/CD** otimizado
+
+## 📈 Recomendações de Melhoria
+
+### **1. Test Coverage**
+
+```typescript
+// src/test-utils/coverage/coverage.config.ts
+export const coverageThresholds = {
+  global: {
+    branches: 80,
+    functions: 80,
+    lines: 80,
+    statements: 80,
+  },
+  './src/services/': {
+    branches: 90,
+    functions: 90,
+    lines: 90,
+    statements: 90,
+  },
+  './src/utils/': {
+    branches: 95,
+    functions: 95,
+    lines: 95,
+    statements: 95,
+  },
+};
+```
+
+### **2. Performance Testing**
+
+```typescript
+// src/__tests__/performance/api.performance.test.ts
+describe('API Performance', () => {
+  it('should handle concurrent requests', async () => {
+    const requests = Array(100)
+      .fill(null)
+      .map(() =>
+        request(app).post('/api/assistant/message').set('Authorization', 'Bearer test-token').send({
+          message: 'Test message',
+          payload: createTestUser(),
+        })
+      );
+
+    const start = Date.now();
+    const responses = await Promise.all(requests);
+    const duration = Date.now() - start;
+
+    expect(duration).toBeLessThan(5000); // 5 seconds
+    expect(responses.every(r => r.status === 200)).toBe(true);
+  });
+});
+```
+
+### **3. Security Testing**
+
+```typescript
+// src/__tests__/security/auth.security.test.ts
+describe('Security Tests', () => {
+  it('should prevent SQL injection', async () => {
+    const maliciousInput = "'; DROP TABLE users; --";
+
+    const response = await request(app)
+      .post('/api/assistant/message')
+      .set('Authorization', 'Bearer test-token')
+      .send({
+        message: maliciousInput,
+        payload: createTestUser(),
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toContain('validation');
+  });
+
+  it('should prevent XSS attacks', async () => {
+    const xssInput = '<script>alert("xss")</script>';
+
+    const response = await request(app)
+      .post('/api/assistant/message')
+      .set('Authorization', 'Bearer test-token')
+      .send({
+        message: xssInput,
+        payload: createTestUser(),
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).not.toContain('<script>');
+  });
+});
+```
+
+### **4. CI/CD Integration**
+
+```yaml
+# .github/workflows/test.yml
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+```
+
+## 🎯 Conclusão
+
+A arquitetura de Testing no projeto está bem estruturada e implementa múltiplas camadas de testes. O uso de **testes unitários** para lógica isolada, **testes de integração** para APIs e banco, **testes E2E** para fluxos completos, **mocking inteligente** e **cobertura abrangente** garante qualidade de código e confiabilidade.
+
+As principais melhorias seriam implementar **testes de performance**, **testes de segurança**, **cobertura de código** com thresholds e **integração CI/CD** para tornar o sistema ainda mais robusto e confiável.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._

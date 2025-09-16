@@ -1,0 +1,502 @@
+---
+alwaysApply: false
+description: Guia Completo de Controllers - Camada de Controle HTTP
+---
+
+# 🎮 Guia Completo de Controllers - Camada de Controle HTTP
+
+## 📋 Resumo Executivo
+
+Este documento descreve o padrão arquitetural para Controllers no projeto Pare Azul API Intelligence. Os Controllers são responsáveis por receber requisições HTTP, validar dados de entrada, orquestrar chamadas para services e retornar respostas padronizadas.
+
+## 🎯 Propósito dos Controllers
+
+### **1. Camada de Controle HTTP**
+
+- **Recebimento de requisições** HTTP
+- **Validação de entrada** de dados
+- **Orquestração** de services
+- **Retorno de respostas** padronizadas
+
+### **2. Interface da API**
+
+- **Endpoints REST** bem definidos
+- **Status codes** apropriados
+- **Error handling** consistente
+- **Logging** de requisições
+
+### **3. Separação de Responsabilidades**
+
+- **Não contém lógica de negócio**
+- **Delega processamento** para services
+- **Foca em HTTP** e validação
+- **Mantém código limpo**
+
+## 🏗️ Estrutura Padrão
+
+### **1. Template Base**
+
+```typescript
+// src/controllers/[domain].controller.ts
+import { Request, Response } from 'express';
+import { [DomainService] } from '../services/[domain].service';
+import { logger } from '../utils/logger.util';
+
+export class [Domain]Controller {
+    /**
+     * Endpoint para [funcionalidade]
+     */
+    async [methodName](req: Request, res: Response): Promise<void> {
+        try {
+            // 1. Extração de dados da requisição
+            const { param1, param2 } = req.body;
+
+            // 2. Validação básica
+            if (!param1 || !param2) {
+                res.status(400).json({
+                    error: 'Missing required fields: param1 and param2 are required'
+                });
+                return;
+            }
+
+            // 3. Log da requisição
+            logger.info(`[[Domain]Controller] Processing [action] from user ${userId}`);
+
+            // 4. Chamada para service
+            const result = await [domainService].[methodName](param1, param2);
+
+            // 5. Resposta de sucesso
+            res.json(result);
+        } catch (error) {
+            // 6. Error handling
+            logger.error('[[Domain]Controller] Error processing [action]:', error);
+
+            const message = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+            if (message.includes('validation')) {
+                res.status(400).json({ error: 'Invalid request data' });
+            } else {
+                res.status(500).json({ error: 'An internal server error occurred.' });
+            }
+        }
+    }
+}
+
+export const [domain]Controller = new [Domain]Controller();
+```
+
+### **2. Padrões Obrigatórios**
+
+```typescript
+// ✅ SEMPRE usar Promise pattern em controllers
+async methodName(req: Request, res: Response): Promise<void> {
+    // Validação de entrada
+    const { param1, param2 } = req.body;
+
+    if (!param1 || !param2) {
+        res.status(400).json({
+            error: 'Missing required fields: param1 and param2 are required'
+        });
+        return;
+    }
+
+    logger.info(`[Controller] Processing action from user ${userId}`);
+
+    return service.method(param1, param2)
+        .then(result => {
+            res.json(result);
+        })
+        .catch(error => {
+            logger.error('[Controller] Error:', error);
+
+            const message = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+            if (message.includes('validation')) {
+                res.status(400).json({ error: 'Invalid request data' });
+            } else {
+                res.status(500).json({ error: 'An internal server error occurred.' });
+            }
+        });
+}
+
+// ❌ NUNCA usar try/catch em controllers
+async methodNameWrong(req: Request, res: Response): Promise<void> {
+    try {
+        const result = await service.method();
+        res.json(result);
+    } catch (error) {
+        logger.error('[Controller] Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
+```
+
+## 🔧 Componentes Obrigatórios
+
+### **1. Imports Padrão**
+
+```typescript
+// Imports obrigatórios para todos os controllers
+import { Request, Response } from 'express';
+import { [DomainService] } from '../services/[domain].service';
+import { logger } from '../utils/logger.util';
+```
+
+### **2. Estrutura de Método**
+
+```typescript
+async methodName(req: Request, res: Response): Promise<void> {
+    // 1. Extração de dados
+    const { param1, param2 } = req.body;
+
+    // 2. Validação básica
+    if (!param1 || !param2) {
+        res.status(400).json({
+            error: 'Missing required fields: param1 and param2 are required'
+        });
+        return;
+    }
+
+    // 3. Log da requisição
+    logger.info(`[Controller] Processing action from user ${userId}`);
+
+    // 4. Chamada para service com Promise pattern
+    return service.method(param1, param2)
+        .then(result => {
+            // 5. Resposta de sucesso
+            res.json(result);
+        })
+        .catch(error => {
+            // 6. Error handling
+            logger.error('[Controller] Error:', error);
+
+            const message = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+            if (message.includes('validation')) {
+                res.status(400).json({ error: 'Invalid request data' });
+            } else {
+                res.status(500).json({ error: 'An internal server error occurred.' });
+            }
+        });
+}
+```
+
+### **3. Error Handling Padrão**
+
+```typescript
+// Error handling obrigatório em todos os métodos usando Promise pattern
+.catch(error => {
+    logger.error('[Controller] Error:', error);
+
+    const message = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+    // Diferentes tipos de erro
+    if (message.includes('validation')) {
+        res.status(400).json({ error: 'Invalid request data' });
+    } else if (message.includes('not found')) {
+        res.status(404).json({ error: 'Resource not found' });
+    } else if (message.includes('unauthorized')) {
+        res.status(401).json({ error: 'Unauthorized' });
+    } else {
+        res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+});
+```
+
+## 📊 Exemplo Implementado
+
+### **Assistant Controller**
+
+```typescript
+// src/controllers/assistant.controller.ts
+import { Request, Response } from 'express';
+import { processAssistantMessage, processWebhookRequest } from '../agents/assistant';
+import { logger } from '../utils/logger.util';
+
+export class AssistantController {
+  /**
+   * Endpoint para processar mensagem de chat
+   */
+  async processMessage(req: Request, res: Response): Promise<void> {
+    const { message, payload, assistant_id } = req.body;
+
+    if (!message || !payload) {
+      res.status(400).json({
+        error: 'Missing required fields: message and payload are required',
+      });
+      return;
+    }
+
+    logger.info(`[AssistantController] Processing message from user ${payload.usuario_id}`);
+
+    return processAssistantMessage(message, payload, assistant_id)
+      .then(result => {
+        res.json(result);
+      })
+      .catch(error => {
+        logger.error('[AssistantController] Error processing message:', error);
+
+        const errorMessage =
+          error instanceof Error ? error.message : 'An internal server error occurred.';
+
+        if (errorMessage.includes('validation')) {
+          res.status(400).json({ error: 'Invalid request data' });
+        } else {
+          res.status(500).json({ error: 'An internal server error occurred.' });
+        }
+      });
+  }
+
+  /**
+   * Endpoint para webhook
+   */
+  async webhook(req: Request, res: Response): Promise<void> {
+    logger.info(`[AssistantController] Processing webhook request`);
+
+    return processWebhookRequest(req.body)
+      .then(result => {
+        res.json(result);
+      })
+      .catch(error => {
+        logger.error('[AssistantController] Error processing webhook:', error);
+
+        res.status(500).json({
+          error: 'An internal server error occurred.',
+          message:
+            'Desculpe, houve um erro interno e não consegui completar sua solicitação. Por favor, tente novamente.',
+          message_date: new Date().toISOString(),
+          assistant_id: req.body.assistant_id || 'error',
+        });
+      });
+  }
+
+  /**
+   * Endpoint para health check específico do chat
+   */
+  async health(req: Request, res: Response): Promise<void> {
+    res.json({
+      status: 'ok',
+      service: 'assistant-agent',
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
+export const assistantController = new AssistantController();
+```
+
+**Características:**
+
+- **Promise pattern** obrigatório (nunca try/catch)
+- **Validação de entrada** obrigatória
+- **Logging estruturado** por ação
+- **Error handling** específico por endpoint
+- **Respostas padronizadas** com status codes
+
+## 🎯 Melhores Práticas
+
+### **1. Nomenclatura**
+
+```typescript
+// ✅ BOM: Nomes descritivos e consistentes
+export class AssistantController {}
+export class UserController {}
+export class VehicleController {}
+
+// ❌ RUIM: Nomes genéricos ou inconsistentes
+export class Controller {}
+export class MainController {}
+export class ApiController {}
+```
+
+### **2. Métodos**
+
+```typescript
+// ✅ BOM: Métodos específicos e descritivos
+async processMessage(req: Request, res: Response): Promise<void> { }
+async webhook(req: Request, res: Response): Promise<void> { }
+async health(req: Request, res: Response): Promise<void> { }
+
+// ❌ RUIM: Métodos genéricos ou confusos
+async handle(req: Request, res: Response): Promise<void> { }
+async process(req: Request, res: Response): Promise<void> { }
+async doSomething(req: Request, res: Response): Promise<void> { }
+```
+
+### **3. Validação**
+
+```typescript
+// ✅ BOM: Validação específica e clara
+if (!message || !payload) {
+  res.status(400).json({
+    error: 'Missing required fields: message and payload are required',
+  });
+  return;
+}
+
+// ❌ RUIM: Validação genérica ou inadequada
+if (!req.body) {
+  res.status(400).json({ error: 'Bad request' });
+  return;
+}
+```
+
+### **4. Logging**
+
+```typescript
+// ✅ BOM: Log específico e informativo
+logger.info(`[AssistantController] Processing message from user ${payload.usuario_id}`);
+
+// ❌ RUIM: Log genérico ou desnecessário
+logger.info('Processing request');
+console.log('User request');
+```
+
+### **5. Error Handling**
+
+```typescript
+// ✅ BOM: Error handling específico e informativo com Promise pattern
+.catch(error => {
+    logger.error('[AssistantController] Error processing message:', error);
+
+    const message = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+    if (message.includes('validation')) {
+        res.status(400).json({ error: 'Invalid request data' });
+    } else {
+        res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+});
+
+// ❌ RUIM: Error handling genérico ou inadequado com try/catch
+try {
+    const result = await service.method();
+    res.json(result);
+} catch (error) {
+    console.log('Error:', error);
+    res.status(500).json({ error: 'Error' });
+}
+```
+
+## 🔄 Fluxo de Execução
+
+### **1. Requisição HTTP**
+
+```
+HTTP Request → Express Router → Middleware → Controller
+```
+
+### **2. Processamento**
+
+```
+Controller → Validation → Service.then() → Response
+```
+
+### **3. Error Flow**
+
+```
+Service.catch() → Log → Status Code → Error Response
+```
+
+## 🚀 Vantagens da Arquitetura
+
+### **1. Consistência**
+
+- **Promise pattern** uniforme em todos os controllers
+- **Error handling** padronizado com .catch()
+- **Logging estruturado** por domínio
+
+### **2. Manutenibilidade**
+
+- **Separação clara** de responsabilidades
+- **Código limpo** e legível com Promise pattern
+- **Fácil debugging** com logs específicos
+
+### **3. Robustez**
+
+- **Validação robusta** de entrada
+- **Error handling** abrangente com Promise pattern
+- **Status codes** apropriados
+
+### **4. Testabilidade**
+
+- **Métodos isolados** e testáveis
+- **Promise pattern** facilita mocking
+- **Dependency injection** clara
+
+## 📈 Recomendações de Melhoria
+
+### **1. Base Controller**
+
+```typescript
+// Criar controller base com funcionalidades comuns
+abstract class BaseController {
+  protected handleError(error: unknown, res: Response, context: string): void {
+    logger.error(`[${this.constructor.name}] ${context}:`, error);
+
+    const message = error instanceof Error ? error.message : 'An internal server error occurred.';
+
+    if (message.includes('validation')) {
+      res.status(400).json({ error: 'Invalid request data' });
+    } else {
+      res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+  }
+
+  protected validateRequired(body: any, fields: string[]): string | null {
+    for (const field of fields) {
+      if (!body[field]) {
+        return `Missing required field: ${field}`;
+      }
+    }
+    return null;
+  }
+}
+```
+
+### **2. Response Helpers**
+
+```typescript
+// Helpers para respostas padronizadas
+class ResponseHelper {
+  static success(res: Response, data: any, status = 200): void {
+    res.status(status).json(data);
+  }
+
+  static error(res: Response, message: string, status = 500): void {
+    res.status(status).json({ error: message });
+  }
+
+  static validationError(res: Response, message: string): void {
+    res.status(400).json({ error: message });
+  }
+}
+```
+
+### **3. Request Validation**
+
+```typescript
+// Validação centralizada de requests
+class RequestValidator {
+  static validateBody(req: Request, res: Response, schema: any): boolean {
+    try {
+      const validated = schema.parse(req.body);
+      req.body = validated;
+      return true;
+    } catch (error) {
+      ResponseHelper.validationError(res, 'Invalid request data');
+      return false;
+    }
+  }
+}
+```
+
+## 🎯 Conclusão
+
+A arquitetura de Controllers no projeto está bem estruturada e segue padrões consistentes. O uso de **Promise pattern** para error handling, **validação robusta** de entrada, **logging estruturado** e **respostas padronizadas** garante código limpo e maintível.
+
+As principais melhorias seriam implementar **Base Controller**, **Response Helpers** e **Request Validation** centralizada para tornar o sistema ainda mais robusto e consistente.
+
+---
+
+_Este guia deve ser atualizado conforme a evolução do projeto e descobertas de melhores práticas._
