@@ -23,6 +23,10 @@ export async function searchVectors(query: string): Promise<string> {
 
         const embedding = embeddingResponse.data[0].embedding;
 
+        if (!supabaseAdmin) {
+            throw new Error("Supabase admin client not initialized");
+        }
+
         // Consulta no Supabase usando a função RPC
         const { data, error } = await supabaseAdmin.rpc("match_faq", {
             query_embedding: embedding,
@@ -61,6 +65,10 @@ export async function searchVectorsWithDetails(query: string): Promise<VectorSea
         });
 
         const embedding = embeddingResponse.data[0].embedding;
+
+        if (!supabaseAdmin) {
+            throw new Error("Supabase admin client not initialized");
+        }
 
         // Consulta no Supabase usando a função RPC
         const { data, error } = await supabaseAdmin.rpc("match_faq", {

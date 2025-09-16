@@ -64,9 +64,9 @@ src/
 
 ```typescript
 // ✅ TEST FILES: [name].test.ts ou [name].spec.ts
-src / __tests__ / unit / utils / validation.util.test.ts;
-src / __tests__ / integration / api / assistant.api.test.ts;
-src / __tests__ / e2e / user - flows / chat - flow.e2e.test.ts;
+`src/__tests__/unit/utils/validation.util.test.ts`;
+`src/__tests__/integration/api/assistant.api.test.ts`;
+`src/__tests__/e2e/user-flows/chat-flow.e2e.test.ts`;
 
 // ✅ TEST DESCRIBE: Descrição clara do que está sendo testado
 describe('ValidationUtil', () => {});

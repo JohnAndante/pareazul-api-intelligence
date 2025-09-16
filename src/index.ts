@@ -5,7 +5,7 @@ import { connectRedis } from './config/redis.config';
 import { logger } from './utils/logger.util';
 
 // Cria a aplicação Express
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware para parsear o corpo da requisição como JSON
