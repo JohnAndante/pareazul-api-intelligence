@@ -17,7 +17,9 @@ const llm = new ChatOpenAI({
 // Template de prompt dinâmico - processa completamente o prompt
 const createDynamicPrompt = (payload: any) => {
     const currentDate = new Date().toISOString();
+
     const systemPrompt = createPromptTemplate(payload, currentDate);
+
     logger.info(`[AssistantAgent] System prompt:`, systemPrompt);
 
     // Processa o prompt completamente antes de usar no LangChain
@@ -44,8 +46,8 @@ export const createAssistantAgent = async (payload: any) => {
         return new AgentExecutor({
             agent,
             tools,
-            // verbose: process.env.NODE_ENV === 'development',
-            // returnIntermediateSteps: process.env.NODE_ENV === 'development',
+            verbose: process.env.NODE_ENV === 'development',
+            returnIntermediateSteps: process.env.NODE_ENV === 'development',
             maxIterations: 12,
             earlyStoppingMethod: 'generate',
             handleParsingErrors: true,
@@ -72,7 +74,6 @@ export const invokeAssistantAgent = async (
         const result = await agentExecutor.invoke({
             input: input,
             currentDate: new Date().toISOString(),
-            // Passa contexto adicional se necessário
             context: JSON.stringify(context),
         });
 
