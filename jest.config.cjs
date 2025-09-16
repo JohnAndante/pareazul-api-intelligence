@@ -16,7 +16,11 @@ module.exports = {
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov", "html"],
   setupFilesAfterEnv: ["<rootDir>/src/test-utils/setup/jest.setup.ts"],
-  testTimeout: 30000,
+  testTimeout: 10000,
+  maxWorkers: "50%",
+  cache: true,
+  clearMocks: true,
+  restoreMocks: true,
   transform: {
     "^.+\.ts$": ["ts-jest", {
       tsconfig: "tsconfig.json",
