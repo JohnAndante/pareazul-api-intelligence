@@ -3,7 +3,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.util';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     [key: string]: any;
