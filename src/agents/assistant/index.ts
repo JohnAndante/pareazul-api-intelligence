@@ -78,15 +78,6 @@ export async function processAssistantMessage(
             logger.warn('Failed to save assistant message, but continuing');
         }
 
-        // Atualiza cache da sessão, salvando na memória
-        await memoryService.setSessionCache(validatedInput.payload.usuario_id, {
-            assistant_id: finalAssistantId,
-            assistant_chat_id: session.id,
-            payload: validatedInput.payload,
-            prefecture_user_token: validatedInput.prefecture_user_token || '',
-            user_token: validatedInput.user_token || '',
-        });
-
         logger.info(`[AssistantAgent] Message processed successfully`);
 
         return {

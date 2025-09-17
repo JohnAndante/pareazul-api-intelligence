@@ -49,7 +49,6 @@ export const createAssistantAgent = async (payload: any) => {
             verbose: process.env.NODE_ENV === 'development',
             returnIntermediateSteps: process.env.NODE_ENV === 'development',
             maxIterations: 12,
-            earlyStoppingMethod: 'generate',
             handleParsingErrors: true,
         });
     } catch (error) {
