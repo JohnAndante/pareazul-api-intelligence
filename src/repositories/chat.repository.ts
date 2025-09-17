@@ -33,6 +33,7 @@ export class ChatRepository extends BaseRepository<ChatSession> {
         }
     }
 
+
     async findActiveByAssistantId(assistantId: string): Promise<ChatSession | null> {
         try {
             const client = this.client;

@@ -3,11 +3,11 @@ import { z } from 'zod';
 export const AssistantQuerySchema = z.object({
     message: z.string().min(1, 'Message cannot be empty'),
     payload: z.object({
-        prefeitura_id: z.string(),
+        prefeitura_id: z.string().or(z.number().transform(String)),
         prefeitura_sigla: z.string(),
         prefeitura_nome: z.string(),
         prefeitura_timezone: z.string(),
-        usuario_id: z.string(),
+        usuario_id: z.string().or(z.number().transform(String)),
         usuario_nome: z.string(),
         usuario_email: z.string(),
         usuario_cpf: z.string(),

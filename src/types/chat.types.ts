@@ -57,6 +57,7 @@ export interface AgentContext {
     sessionId: string;
     userId: string;
     prefectureId: string;
+    prefectureUserToken?: string;
     payload: ChatPayload;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
 }
