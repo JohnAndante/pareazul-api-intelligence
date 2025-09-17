@@ -10,7 +10,7 @@ export class VehicleService {
         this.memoryService = new MemoryService();
     }
 
-    async getUserVehicles({ userId, plate, model }: { userId: number; plate?: string; model?: string }): Promise<{ text: string }> {
+    async getUserVehicles({ userId, plate, model }: { userId: number; plate?: string; model?: string }): Promise<{ text: string; data?: unknown }> {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
@@ -43,7 +43,8 @@ export class VehicleService {
                 ).join('\n');
 
                 return {
-                    text: `Found ${filteredVehicles.length} vehicle(s) for user ${userId}:\n${vehiclesText}`
+                    text: `Veículos encontrados (${filteredVehicles.length}) para o usuário ${userId}:\n${vehiclesText}`,
+                    data: filteredVehicles
                 };
             })
             .catch(error => {
