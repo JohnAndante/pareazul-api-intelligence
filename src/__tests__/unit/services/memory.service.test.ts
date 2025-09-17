@@ -76,6 +76,13 @@ describe('MemoryService', () => {
 });
 
 describe('getSessionCache', () => {
+    let memoryService: MemoryService;
+
+    beforeEach(() => {
+        memoryService = new MemoryService();
+        jest.clearAllMocks();
+    });
+
     it('should retrieve session cache successfully', async () => {
         const userId = 'user123';
         const sessionData: SessionCache = {
@@ -130,6 +137,13 @@ describe('getSessionCache', () => {
 });
 
 describe('setMemoryBuffer', () => {
+    let memoryService: MemoryService;
+
+    beforeEach(() => {
+        memoryService = new MemoryService();
+        jest.clearAllMocks();
+    });
+
     it('should store memory buffer successfully', async () => {
         const sessionId = 'session123';
         const messages: ChatMessage[] = [
@@ -179,6 +193,13 @@ describe('setMemoryBuffer', () => {
 });
 
 describe('getMemoryBuffer', () => {
+    let memoryService: MemoryService;
+
+    beforeEach(() => {
+        memoryService = new MemoryService();
+        jest.clearAllMocks();
+    });
+
     it('should retrieve memory buffer successfully', async () => {
         const sessionId = 'session123';
         const buffer: MemoryBuffer = {
@@ -223,6 +244,13 @@ describe('getMemoryBuffer', () => {
 });
 
 describe('addMessage', () => {
+    let memoryService: MemoryService;
+
+    beforeEach(() => {
+        memoryService = new MemoryService();
+        jest.clearAllMocks();
+    });
+
     it('should add message successfully', async () => {
         const chatId = 'chat123';
         const subject = 'user' as const;
@@ -282,6 +310,13 @@ describe('addMessage', () => {
 });
 
 describe('updateMemoryBuffer', () => {
+    let memoryService: MemoryService;
+
+    beforeEach(() => {
+        memoryService = new MemoryService();
+        jest.clearAllMocks();
+    });
+
     it('should update memory buffer successfully', async () => {
         const chatId = 'chat123';
         const messages: ChatMessage[] = [
@@ -321,5 +356,4 @@ describe('updateMemoryBuffer', () => {
             expect.any(Error)
         );
     });
-});
 });
