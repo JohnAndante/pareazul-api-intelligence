@@ -5,14 +5,12 @@ import { APIVehicle, Vehicle } from "../types/vehicle.types";
 export const fetchUserVehicles = async (
     userId: string,
     prefectureToken: string
-): Promise<APIVehicle[]> => {
-    return Promise.resolve()
-        .then(async () => {
-            const path = `/v4/usuarios/${userId}/veiculos`;
+): Promise<APIVehicle[]> => new Promise((resolve, reject) => {
+    const path = `/v4/usuarios/${userId}/veiculos`;
+    const headers = { 'x-access-key': prefectureToken };
 
-            const response = await axiosWebservice.get(path, {
-                headers: { 'x-access-key': prefectureToken },
-            });
+    axiosWebservice.get(path, { headers })
+        .then(response => {
 
             if (response.status !== 200) {
                 return [];
@@ -33,37 +31,35 @@ export const fetchUserVehicles = async (
 
             return parsedVehicles;
         })
+        .then(resolve)
         .catch(error => {
             const errorMessage = error.response?.data?.message || error.message || error;
             logger.error('[fetchUserVehicles] Error fetching user vehicles:', errorMessage);
-            throw errorMessage;
+            reject(errorMessage);
         });
-};
-
+});
 export const postCreateVehicle = async (
     userId: string,
     vehicle: { plate: string; model: string; vehicle_type_id: number },
     prefectureToken: string
-): Promise<any> => {
-    return Promise.resolve()
-        .then(async () => {
-            const path = `/v4/usuarios/${userId}/veiculos`;
+) => new Promise((resolve, reject) => {
+    const path = `/v4/usuarios/${userId}/veiculos`;
+    const headers = { 'x-access-key': prefectureToken };
 
-            const vehicleData = {
-                placa: vehicle.plate.toUpperCase(),
-                modelo: vehicle.model,
-                tipo_veiculo_id: vehicle.vehicle_type_id
-            };
+    const vehicleData = {
+        placa: vehicle.plate.toUpperCase(),
+        modelo: vehicle.model,
+        tipo_veiculo_id: vehicle.vehicle_type_id
+    };
 
-            const response = await axiosWebservice.post(path, vehicleData, {
-                headers: { 'x-access-key': prefectureToken },
-            });
-
+    axiosWebservice.post(path, vehicleData, { headers })
+        .then(response => {
             return response.data;
         })
+        .then(resolve)
         .catch(error => {
             const errorMessage = error.response?.data?.message || error.message || error;
             logger.error('[postCreateVehicle] Error creating vehicle:', errorMessage);
-            throw errorMessage;
+            reject(errorMessage);
         });
-};
+});
