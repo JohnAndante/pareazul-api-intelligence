@@ -3,7 +3,7 @@ import { activateVehicle, fetchVehicleCurrentActivations } from "../api/activati
 import { fetchUserVehicles } from "../api/vehicle.api";
 import { fetchPrefectureRules } from "../api/prefecture.api";
 import { extractActivationData } from "../utils/activation.utils";
-import { StringUtil } from '../utils/string.util';
+import { clearPlate } from '../utils/string.utils';
 import { logger } from "../utils/logger.util";
 
 import { HandleRegisterVehicleActivationParams, CheckVehicleActivationParams } from '../types/activation.types';
@@ -29,7 +29,7 @@ class ActivationService {
                     prefecture_user_token: prefectureUserToken,
                 } = userPayload;
 
-                const clearPlateValue = StringUtil.clearPlate(vehiclePlate);
+                const clearPlateValue = clearPlate(vehiclePlate);
 
                 const activations = await fetchVehicleCurrentActivations(
                     clearPlateValue, prefectureId, prefectureTimezone, prefectureUserToken
@@ -76,7 +76,7 @@ class ActivationService {
                 // Verificando se o veículo está registrado para o usuário
                 const userVehicles = await fetchUserVehicles(userId.toString(), prefectureUserToken);
 
-                const vehicle = userVehicles.find(v => StringUtil.clearPlate(v.plate) === StringUtil.clearPlate(vehiclePlate));
+                const vehicle = userVehicles.find(v => clearPlate(v.plate) === clearPlate(vehiclePlate));
 
                 if (!vehicle) {
                     return { text: `Vehicle plate ${vehiclePlate} not registered for user ${userId}.` };

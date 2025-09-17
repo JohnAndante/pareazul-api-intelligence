@@ -11,7 +11,7 @@ export interface SessionResult {
 
 export class SessionService {
     /**
-     * Cria ou recupera uma sessão seguindo a lógica do n8n
+     * Cria ou recupera uma sessão com validação robusta
      */
     createSession(input: {
         payload: Record<string, unknown>;
@@ -19,46 +19,63 @@ export class SessionService {
     }): Promise<SessionResult | null> {
         const { payload, assistant_id } = input;
         const userId = payload.usuario_id as string;
+        const prefectureId = payload.prefeitura_id as string;
 
         return Promise.resolve()
             .then(async () => {
-                // 1. Se tem assistant_id, tenta recuperar sessão existente
-                if (assistant_id) {
-                    const existingSession = await this.findActiveSession(userId, assistant_id);
-                    if (existingSession) {
-                        logger.info(`[SessionService] Using existing session: ${existingSession.id}`);
-                        return {
-                            session: existingSession,
-                            assistantId: assistant_id,
-                            isNewSession: false
-                        };
-                    }
-                }
+                logger.info(`[SessionService] Processing session for user ${userId} in prefecture ${prefectureId}`);
 
-                // 2. Se não tem assistant_id, verifica se existe alguma sessão ativa do usuário
                 if (!assistant_id) {
-                    const existingUserSession = await chatRepository.findActiveByUserId(userId);
-                    if (existingUserSession) {
-                        logger.info(`[SessionService] Using existing user session: ${existingUserSession.id}`);
-                        return {
-                            session: existingUserSession,
-                            assistantId: existingUserSession.assistant_id,
-                            isNewSession: false
-                        };
+                    await this.inactivateOldSessions(userId);
+
+                    // Cria nova sessão
+                    const newAssistantId = assistant_id || uuidv4();
+                    const newSession = await chatRepository.createChat({
+                        user_id: userId,
+                        prefecture_id: prefectureId,
+                        assistant_id: newAssistantId
+                    });
+
+                    if (!newSession) {
+                        logger.error('[SessionService] Failed to create new session');
+                        return null;
                     }
+
+                    logger.info(`[SessionService] New session created: ${newSession.id} with assistant_id: ${newAssistantId}`);
+
+                    return {
+                        session: newSession,
+                        assistantId: newAssistantId,
+                        isNewSession: true
+                    };
                 }
 
-                // 3. Se não encontrou nenhuma sessão, cria nova
-                logger.info(`[SessionService] Creating new session for user: ${userId}`);
+                const existingUserSession = await chatRepository.findActiveByUserId(userId);
 
-                // 4. Inativa sessões antigas do usuário (como no n8n)
+                if (existingUserSession && existingUserSession.assistant_id === assistant_id) {
+                    // Mesmo assistant_id = continua o chat existente
+                    logger.info(`[SessionService] Using existing session with same assistant_id: ${existingUserSession.id}`);
+                    return {
+                        session: existingUserSession,
+                        assistantId: assistant_id,
+                        isNewSession: false
+                    };
+                }
+
+                // Se não tem assistant_id = NOVO CHAT (inativa anterior)
                 await this.inactivateOldSessions(userId);
 
-                // 5. Cria nova sessão
+                // Continua para criar nova sessão
+                logger.info(`[SessionService] Creating new session for user ${userId} in prefecture ${prefectureId}`);
+
+                // SEMPRE inativa todas as sessões antigas do usuário (garante apenas 1 ativa)
+                await this.inactivateOldSessions(userId);
+
+                // Cria nova sessão
                 const newAssistantId = assistant_id || uuidv4();
                 const newSession = await chatRepository.createChat({
                     user_id: userId,
-                    prefecture_id: payload.prefeitura_id as string,
+                    prefecture_id: prefectureId,
                     assistant_id: newAssistantId
                 });
 
@@ -67,7 +84,7 @@ export class SessionService {
                     return null;
                 }
 
-                logger.info(`[SessionService] New session created: ${newSession.id}`);
+                logger.info(`[SessionService] New session created: ${newSession.id} with assistant_id: ${newAssistantId}`);
 
                 return {
                     session: newSession,

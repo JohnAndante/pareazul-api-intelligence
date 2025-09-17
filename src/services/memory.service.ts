@@ -12,25 +12,41 @@ export class MemoryService {
     private readonly BUFFER_SIZE = env.MEMORY_BUFFER_SIZE;
 
     /**
-     * Armazena metadados da sessão no Redis
+     * Atualiza apenas o assistant_id na chave compartilhada do Redis
      */
     async setSessionCache(userId: string, sessionData: SessionCache): Promise<boolean> {
         try {
             const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
 
-            // ATENÇÃO: Esta função está sendo desabilitada para evitar sobrescrever dados do webservice
-            logger.warn(`[CRITICAL] Tentativa de sobrescrever chave ${key} foi BLOQUEADA! Esta chave é gerenciada pelo webservice externo.`);
-            logger.warn(`[CRITICAL] Dados que seriam escritos:`, sessionData);
+            // Primeiro, recupera os dados existentes para não sobrescrever
+            const existingValue = await redis.get(key);
+            let existingData = {};
 
-            // Não executar a escrita para evitar sobrescrever dados externos
-            // await redis.setEx(key, this.SESSION_TTL, value);
-            // logger.debug(`Session cache stored for user ${userId}`);
+            if (existingValue) {
+                try {
+                    existingData = JSON.parse(existingValue);
+                } catch (parseError) {
+                    logger.warn(`[setSessionCache] Error parsing existing data for key ${key}:`, parseError);
+                }
+            }
 
-            return false; // Retorna false para indicar que não foi executado
-        } catch (error) {
-            logger.warn('Redis unavailable for session cache, using memory fallback:', error);
-            // Fallback: armazenar em memória local (não persistente)
+            // Atualiza apenas os campos necessários (principalmente assistant_id)
+            const updatedData = {
+                ...existingData,
+                assistant_id: sessionData.assistant_id,
+                assistant_chat_id: sessionData.assistant_chat_id,
+                // Preserva outros campos que podem existir
+            };
+
+            const value = JSON.stringify(updatedData);
+            await redis.setEx(key, this.SESSION_TTL, value);
+
+            logger.debug(`Session cache updated for user ${userId} with assistant_id: ${sessionData.assistant_id}`);
             return true;
+
+        } catch (error) {
+            logger.error('Error updating session cache:', error);
+            return false;
         }
     }
 
@@ -40,21 +56,18 @@ export class MemoryService {
     async getSessionCache(userId: string): Promise<SessionCache | null> {
         try {
             const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
-            logger.info(`[getSessionCache] Buscando chave: ${key}`);
-
             const value = await redis.get(key);
 
             if (!value) {
-                logger.warn(`[getSessionCache] CHAVE ${key} NÃO ENCONTRADA NO REDIS!`);
-                logger.warn(`[getSessionCache] Isso pode indicar que o webservice não criou a sessão ou ela expirou.`);
+                logger.info(`[getSessionCache] Session cache not found for userId: ${userId}`);
                 return null;
             }
 
             const parsedData = JSON.parse(value) as SessionCache;
-            logger.info(`[getSessionCache] Chave ${key} encontrada com dados:`, parsedData);
+            logger.debug(`[getSessionCache] Session cache found for user: ${userId}`);
             return parsedData;
         } catch (error) {
-            logger.error(`[getSessionCache] Erro ao recuperar session cache para userId: ${userId}:`, error);
+            logger.error(`[getSessionCache] Error retrieving session cache for userId: ${userId}:`, error);
             return null;
         }
     }
@@ -93,6 +106,7 @@ export class MemoryService {
             const value = await redis.get(key);
 
             if (!value) {
+                logger.debug(`Memory buffer not found for session ${sessionId}`);
                 return null;
             }
 
@@ -146,6 +160,7 @@ export class MemoryService {
             return false;
         }
     }
+
 }
 
 export const memoryService = new MemoryService();
