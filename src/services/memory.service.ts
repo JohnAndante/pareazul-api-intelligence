@@ -17,11 +17,16 @@ export class MemoryService {
     async setSessionCache(userId: string, sessionData: SessionCache): Promise<boolean> {
         try {
             const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
-            const value = JSON.stringify(sessionData);
 
-            await redis.setEx(key, this.SESSION_TTL, value);
-            logger.debug(`Session cache stored for user ${userId}`);
-            return true;
+            // ATENÇÃO: Esta função está sendo desabilitada para evitar sobrescrever dados do webservice
+            logger.warn(`[CRITICAL] Tentativa de sobrescrever chave ${key} foi BLOQUEADA! Esta chave é gerenciada pelo webservice externo.`);
+            logger.warn(`[CRITICAL] Dados que seriam escritos:`, sessionData);
+
+            // Não executar a escrita para evitar sobrescrever dados externos
+            // await redis.setEx(key, this.SESSION_TTL, value);
+            // logger.debug(`Session cache stored for user ${userId}`);
+
+            return false; // Retorna false para indicar que não foi executado
         } catch (error) {
             logger.warn('Redis unavailable for session cache, using memory fallback:', error);
             // Fallback: armazenar em memória local (não persistente)
@@ -35,15 +40,21 @@ export class MemoryService {
     async getSessionCache(userId: string): Promise<SessionCache | null> {
         try {
             const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
+            logger.info(`[getSessionCache] Buscando chave: ${key}`);
+
             const value = await redis.get(key);
 
             if (!value) {
+                logger.warn(`[getSessionCache] CHAVE ${key} NÃO ENCONTRADA NO REDIS!`);
+                logger.warn(`[getSessionCache] Isso pode indicar que o webservice não criou a sessão ou ela expirou.`);
                 return null;
             }
 
-            return JSON.parse(value) as SessionCache;
+            const parsedData = JSON.parse(value) as SessionCache;
+            logger.info(`[getSessionCache] Chave ${key} encontrada com dados:`, parsedData);
+            return parsedData;
         } catch (error) {
-            logger.error('Error retrieving session cache:', error);
+            logger.error(`[getSessionCache] Erro ao recuperar session cache para userId: ${userId}:`, error);
             return null;
         }
     }

@@ -1,41 +1,38 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { z } from 'zod';
 import { memoryService } from '../services/memory.service';
 import { chatRepository } from '../repositories/chat.repository';
 import { messageRepository } from '../repositories/message.repository';
 import { logger } from '../utils/logger.util';
+import { GetMessageHistorySchema, GetSessionStatusSchema, GetUserInfoSchema } from '../validators/database.validator';
 
-// Schemas para as tools
-const GetUserInfoSchema = z.object({
-    userId: z.string().describe('ID do usuário')
-});
-
-const GetMessageHistorySchema = z.object({
-    sessionId: z.string().describe('ID da sessão'),
-    limit: z.number().optional().describe('Número máximo de mensagens a retornar (padrão: 20)')
-});
-
-const GetSessionStatusSchema = z.object({
-    sessionId: z.string().describe('ID da sessão')
-});
 
 // Tool para buscar informações do usuário
 const getUserInfoTool = new DynamicStructuredTool({
     name: 'get_user_info',
-    description: 'Busca informações básicas do usuário atual',
+    description: 'Search for basic information about the current user.' +
+        'Required information: user ID to identify the user in the system.' +
+        'You can retrieve it from the session cache using the memory service.',
     schema: GetUserInfoSchema,
     func: async (input: { userId: string }) => {
         try {
             const { userId } = input;
+            logger.info(`[get_user_info] Buscando informações para userId: ${userId}`);
+
             const sessionCache = await memoryService.getSessionCache(userId);
             if (!sessionCache) {
+                logger.warn(`[get_user_info] SessionCache não encontrado para userId: ${userId}`);
                 return 'Usuário não encontrado ou sessão expirada';
             }
 
+            logger.info(`[get_user_info] SessionCache encontrado para userId: ${userId}, assistant_chat_id: ${sessionCache.assistant_chat_id}`);
+
             const session = await chatRepository.findById(sessionCache.assistant_chat_id);
             if (!session) {
+                logger.warn(`[get_user_info] Sessão não encontrada no banco para assistant_chat_id: ${sessionCache.assistant_chat_id}`);
                 return 'Sessão não encontrada';
             }
+
+            logger.info(`[get_user_info] Sessão encontrada para userId: ${userId}, session_id: ${session.id}`);
 
             return JSON.stringify({
                 user_id: session.user_id,

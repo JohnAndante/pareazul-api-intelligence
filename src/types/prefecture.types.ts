@@ -49,7 +49,7 @@ export interface FormattedRule {
 }
 
 export interface PrefectureRulesParams {
-    userId: string;
+    userId: number;
 }
 
 export interface ValueTimeRule {
@@ -61,6 +61,6 @@ export interface ValueTimeRule {
 }
 
 export interface PrefectureZoneRulesParams {
-    userId: string;
+    userId: number;
     zoneId: number;
 }

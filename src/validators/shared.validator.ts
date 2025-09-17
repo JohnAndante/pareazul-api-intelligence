@@ -11,7 +11,9 @@ import { z } from 'zod';
  * @example '1234567890'
  */
 export const userIdValidator = z
-    .string()
+    .number()
+    .int('User ID must be an integer')
+    .positive('User ID must be positive')
     .min(1, 'User ID is required')
     .describe('The unique identifier for the user');
 

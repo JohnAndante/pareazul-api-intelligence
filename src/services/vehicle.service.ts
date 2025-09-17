@@ -10,11 +10,11 @@ export class VehicleService {
         this.memoryService = new MemoryService();
     }
 
-    async getUserVehicles({ userId, plate, model }: { userId: string; plate?: string; model?: string }): Promise<{ text: string }> {
+    async getUserVehicles({ userId, plate, model }: { userId: number; plate?: string; model?: string }): Promise<{ text: string }> {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId);
+                const sessionData = await this.memoryService.getSessionCache(userId.toString());
 
                 if (!sessionData) {
                     logger.warn('[VehicleService] No session data found for user:', userId);
@@ -25,7 +25,7 @@ export class VehicleService {
                     prefecture_user_token: prefectureUserToken
                 } = sessionData;
 
-                const vehicles = await fetchUserVehicles(userId, prefectureUserToken);
+                const vehicles = await fetchUserVehicles(userId.toString(), prefectureUserToken);
 
                 if (!Array.isArray(vehicles) || vehicles.length === 0) {
                     return { text: `No vehicles found for user ${userId}.` };
@@ -39,7 +39,7 @@ export class VehicleService {
                 }
 
                 const vehiclesText = filteredVehicles.map(vehicle =>
-                    `- Plate: ${vehicle.plate}, Model: ${vehicle.model}, Type: ${vehicle.type?.name || 'Unknown'}`
+                    `- Plate: ${vehicle.plate}, Model: ${vehicle.model}, Type: ${vehicle.type || 'Unknown'}`
                 ).join('\n');
 
                 return {
@@ -54,11 +54,11 @@ export class VehicleService {
             });
     }
 
-    async registerUserVehicle({ userId, vehicle }: { userId: string; vehicle: { plate: string; model: string; vehicle_type_id: number } }): Promise<{ text: string }> {
+    async registerUserVehicle({ userId, vehicle }: { userId: number; vehicle: { plate: string; model: string; vehicle_type_id: number } }): Promise<{ text: string }> {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId);
+                const sessionData = await this.memoryService.getSessionCache(userId.toString());
 
                 if (!sessionData) {
                     logger.warn('[VehicleService] No session data found for user:', userId);
@@ -69,7 +69,7 @@ export class VehicleService {
                     prefecture_user_token: prefectureUserToken
                 } = sessionData;
 
-                await postCreateVehicle(userId, vehicle, prefectureUserToken);
+                await postCreateVehicle(userId.toString(), vehicle, prefectureUserToken);
 
                 return {
                     text: `Vehicle ${vehicle.plate} (${vehicle.model}) successfully registered for user ${userId}.`

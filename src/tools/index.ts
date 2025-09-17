@@ -4,6 +4,7 @@ import { faqTools } from './faq.tool';
 import { userTools } from './user.tools';
 import { prefectureTools } from './prefecture.tools';
 import { notificationTools } from './notification.tools';
+import { vehicleTools } from './vehicle.tools';
 
 /**
  * Cria todas as tools disponíveis para o assistant agent
@@ -27,6 +28,9 @@ export function createAllTools() {
 
         // Tools de notificação
         ...notificationTools,
+
+        // Tools de veículo
+        ...vehicleTools,
     ];
 }
 
@@ -38,4 +42,4 @@ export function createDatabaseTools() {
 }
 
 // Exportar tools individuais para uso específico
-export { activationTools, databaseTools, faqTools, userTools, prefectureTools, notificationTools };
+export { activationTools, databaseTools, faqTools, userTools, prefectureTools, notificationTools, vehicleTools };

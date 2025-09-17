@@ -12,7 +12,7 @@ export interface VehicleActivation {
 // Service types
 
 export interface HandleRegisterVehicleActivationParams {
-    userId: string;
+    userId: number;
     vehiclePlate: string;
     timeValueRuleId: number;
     previousActivationId?: number;
@@ -20,7 +20,7 @@ export interface HandleRegisterVehicleActivationParams {
 };
 
 export interface CheckVehicleActivationParams {
-    userId: string;
+    userId: number;
     vehiclePlate: string;
 }
 

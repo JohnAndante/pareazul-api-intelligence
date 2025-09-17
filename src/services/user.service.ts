@@ -10,11 +10,11 @@ export class UserService {
         this.memoryService = new MemoryService();
     }
 
-    async getUserBalance({ userId }: { userId: string }): Promise<{ text: string }> {
+    async getUserBalance({ userId }: { userId: number }): Promise<{ text: string }> {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId);
+                const sessionData = await this.memoryService.getSessionCache(userId.toString());
 
                 if (!sessionData) {
                     logger.warn('[UserService] No session data found for user:', userId);
@@ -26,7 +26,7 @@ export class UserService {
                     prefecture_user_token: prefectureUserToken
                 } = sessionData;
 
-                const balance = await fetchUserBalance({ userId, prefectureId, prefectureToken: prefectureUserToken });
+                const balance = await fetchUserBalance({ userId: userId.toString(), prefectureId, prefectureToken: prefectureUserToken });
 
                 if (balance === null) {
                     return {
