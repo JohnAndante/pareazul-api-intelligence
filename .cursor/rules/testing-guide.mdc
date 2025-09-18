@@ -252,20 +252,19 @@ describe('SessionService', () => {
 ```typescript
 // src/__tests__/unit/controllers/assistant.controller.test.ts
 import { Request, Response } from 'express';
-import { AssistantController } from '../../../controllers/assistant.controller';
+import { assistantController } from '../../../controllers/assistant.controller';
 import { processAssistantMessage } from '../../../agents/assistant';
 
 // Mock das dependências
 jest.mock('../../../agents/assistant');
 
 describe('AssistantController', () => {
-  let controller: AssistantController;
+  let controller = assistantController;
   let mockReq: Partial<Request>;
   let mockRes: Partial<Response>;
   let mockNext: jest.Mock;
 
   beforeEach(() => {
-    controller = new AssistantController();
     mockReq = {
       body: {},
       headers: {},

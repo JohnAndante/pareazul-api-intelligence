@@ -32,6 +32,13 @@ Este documento descreve o padrão arquitetural para Routes no projeto Pare Azul 
 - **Documentação** implícita
 - **Manutenibilidade** de rotas
 
+### **4. Validação de Dados**
+
+- **Validators** para validação inline
+- **Type safety** completo
+- **Mensagens de erro** descritivas
+- **Transformações** automáticas de dados
+
 ## 🏗️ Estrutura Padrão
 
 ### **1. Template Base**
@@ -41,7 +48,8 @@ Este documento descreve o padrão arquitetural para Routes no projeto Pare Azul 
 import { Router } from 'express';
 import { [domain]Controller } from '../controllers/[domain].controller';
 import { [middleware] } from '../middleware/[middleware].middleware';
-import { [validator] } from '../[validators]/[domain].validator';
+import { validate } from '../middleware/validation.middleware';
+import { [Domain]RouteValidator } from '../validators/[domain].validator';
 
 const router = Router();
 
@@ -53,7 +61,7 @@ router.[method](
     '/[endpoint]',
     [middleware1],
     [middleware2],
-    validate({ [body|query|params]: [Schema] }),
+    validate([Domain]RouteValidator.[method][routeDescription]()),
     [domain]Controller.[methodName].bind([domain]Controller)
 );
 
@@ -61,7 +69,7 @@ router.[method](
 router.[method](
     '/[endpoint]',
     [middleware1],
-    validate({ [body|query|params]: [Schema] }),
+    validate([Domain]RouteValidator.[method][routeDescription]()),
     [domain]Controller.[methodName].bind([domain]Controller)
 );
 
@@ -96,6 +104,34 @@ router.post(
 
 ## 🔧 Componentes Obrigatórios
 
+### **0. Padrão de Validação (NOVO)**
+
+```typescript
+// ✅ NOVO PADRÃO: Validação com schemas inline
+import { validate } from '../middleware/validation.middleware';
+import { [Domain]RouteValidator } from '../validators/[domain].validator';
+
+// Uso nas rotas
+router.post(
+    '/endpoint',
+    webserviceAuth,
+    validate([Domain]RouteSchema.createResource()),
+    controller.createResource.bind(controller)
+);
+
+// ❌ PADRÃO ANTIGO: Validação com validators separados
+import { [Domain]Validator } from '../validators/[domain].validator';
+validate({ body: [Domain]Validator.createResource })
+```
+
+**Vantagens do Novo Padrão:**
+
+- ✅ **Validação inline** nas rotas
+- ✅ **Type safety** completo
+- ✅ **Mensagens de erro** descritivas
+- ✅ **Transformações** automáticas
+- ✅ **Organização** clara por domínio
+
 ### **1. Imports Padrão**
 
 ```typescript
@@ -103,7 +139,8 @@ router.post(
 import { Router } from 'express';
 import { [domain]Controller } from '../controllers/[domain].controller';
 import { [middleware] } from '../middleware/[middleware].middleware';
-import { [validator] } from '../[validators]/[domain].validator';
+import { validate } from '../middleware/validation.middleware';
+import { [Domain]RouteValidator } from '../validators/[domain].validator';
 ```
 
 ### **2. Estrutura de Rota**
@@ -114,7 +151,7 @@ router.[method](
     '/[endpoint]',                    // 1. Path da rota
     [middleware1],                     // 2. Middlewares de segurança
     [middleware2],                     // 3. Middlewares de validação
-    validate({ [body|query|params]: [Schema] }), // 4. Validação de dados
+    validate([Domain]RouteSchema.[method]()), // 4. Validação de dados
     [domain]Controller.[methodName].bind([domain]Controller) // 5. Controller
 );
 ```
@@ -136,7 +173,7 @@ router.[method](
     authMiddleware,
 
     // 4. Validação
-    validate({ body: Schema }),
+    validate([Domain]RouteSchema.[method]()),
 
     // 5. Controller
     controller.method.bind(controller)
@@ -184,7 +221,7 @@ import { Router } from 'express';
 import { assistantController } from '../controllers/assistant.controller';
 import { simpleAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
-import { WebhookRequestSchema } from '../agents/assistant/schemas';
+import { AssistantRouteValidator } from '../validators/assistant.validator';
 
 const router = Router();
 
@@ -195,7 +232,7 @@ router.get('/health', assistantController.health.bind(assistantController));
 router.post(
   '/webhook',
   simpleAuth,
-  validate({ body: WebhookRequestSchema }),
+  validate(AssistantRouteValidator.postWebhook()),
   assistantController.webhook.bind(assistantController)
 );
 
@@ -269,7 +306,7 @@ router.post(
 router.post(
   '/webhook',
   simpleAuth,
-  validate({ body: WebhookRequestSchema }),
+  validate(AssistantRouteValidator.postWebhook()),
   controller.webhook.bind(controller)
 );
 

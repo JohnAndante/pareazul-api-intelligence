@@ -47,38 +47,31 @@ export class [Domain]Controller {
      * Endpoint para [funcionalidade]
      */
     async [methodName](req: Request, res: Response): Promise<void> {
-        try {
-            // 1. Extração de dados da requisição
-            const { param1, param2 } = req.body;
+        // 1. Extração de dados da requisição
+        const { param1, param2 } = req.body;
 
-            // 2. Validação básica
-            if (!param1 || !param2) {
-                res.status(400).json({
-                    error: 'Missing required fields: param1 and param2 are required'
-                });
-                return;
-            }
+        // 2. Validação básica
+        if (!param1 || !param2) {
+            res.status(400).json({
+                error: 'Missing required fields: param1 and param2 are required'
+            });
+            return;
+        }
 
-            // 3. Log da requisição
-            logger.info(`[[Domain]Controller] Processing [action] from user ${userId}`);
+        // 3. Log da requisição
+        logger.info(`[[Domain]Controller] Processing [action] from user ${userId}`);
 
-            // 4. Chamada para service
-            const result = await [domainService].[methodName](param1, param2);
-
+        // 4. Chamada para service
+        [domainService].[methodName](param1, param2)
+        .then(result => {
             // 5. Resposta de sucesso
             res.json(result);
-        } catch (error) {
+        })
+        .catch(error => {
             // 6. Error handling
             logger.error('[[Domain]Controller] Error processing [action]:', error);
-
-            const message = error instanceof Error ? error.message : 'An internal server error occurred.';
-
-            if (message.includes('validation')) {
-                res.status(400).json({ error: 'Invalid request data' });
-            } else {
-                res.status(500).json({ error: 'An internal server error occurred.' });
-            }
-        }
+            res.status(500).json({ error: 'An internal server error occurred.' });
+        });
     }
 }
 
@@ -213,7 +206,7 @@ import { Request, Response } from 'express';
 import { processAssistantMessage, processWebhookRequest } from '../agents/assistant';
 import { logger } from '../utils/logger.util';
 
-export class AssistantController {
+class AssistantController {
   /**
    * Endpoint para processar mensagem de chat
    */
@@ -299,14 +292,14 @@ export const assistantController = new AssistantController();
 
 ```typescript
 // ✅ BOM: Nomes descritivos e consistentes
-export class AssistantController {}
-export class UserController {}
-export class VehicleController {}
+class AssistantController {}
+class UserController {}
+class VehicleController {}
 
 // ❌ RUIM: Nomes genéricos ou inconsistentes
-export class Controller {}
-export class MainController {}
-export class ApiController {}
+class Controller {}
+class MainController {}
+class ApiController {}
 ```
 
 ### **2. Métodos**

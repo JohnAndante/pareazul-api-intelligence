@@ -1,0 +1,472 @@
+---
+alwaysApply: false
+description: Guia de Schemas (Validação de entradas e saídas de métodos e funções)
+---
+
+# 📋 Schema Guide - Guia de Schemas
+
+## 📋 Resumo Executivo
+
+Este guia define o padrão de criação e organização de schemas de validação no projeto Pare Azul API Intelligence. Os schemas são utilizados para validação de rotas HTTP e garantem type safety em toda a aplicação.
+
+## 🎯 Estrutura de Schemas
+
+### **Organização de Arquivos**
+
+```
+src/
+├── schemas/                    # Schemas Zod para tools/services
+│   ├── activation.schema.ts    # Schemas de ativações
+│   ├── database.schema.ts      # Schemas de banco de dados
+│   ├── faq.schema.ts           # Schemas de FAQ
+│   ├── notification.schema.ts  # Schemas de notificações
+│   ├── prefecture.schema.ts    # Schemas de prefeitura
+│   ├── shared.schema.ts        # Schemas compartilhados
+│   ├── user.schema.ts          # Schemas de usuários
+│   └── vehicle.schema.ts       # Schemas de veículos
+├── validators/                 # Validadores de rotas HTTP
+│   ├── assistant.validator.ts  # Validação das rotas do assistant
+│   └── metrics.validator.ts    # Validação das rotas de métricas
+└── types/                      # Definições de tipos TypeScript
+    ├── chat.types.ts
+    ├── user.types.ts
+    └── metrics.types.ts
+```
+
+## 🏗️ Padrão de Criação de Schemas
+
+### **Estrutura Base**
+
+```typescript
+import { z } from 'zod';
+
+/**
+ * 📋 [Nome] Schemas
+ *
+ * Schemas Zod para [funcionalidade]
+ */
+
+export const [Nome]Schema = z.object({
+    // Campos obrigatórios
+    campoObrigatorio: z.string().min(1, 'Campo obrigatório'),
+
+    // Campos opcionais
+    campoOpcional: z.string().optional(),
+
+    // Validações customizadas
+    campoCustomizado: z.string()
+        .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Formato inválido')
+        .transform(val => val.toUpperCase()),
+});
+
+export type [Nome]Input = z.infer<typeof [Nome]Schema>;
+```
+
+### **Exemplo Completo**
+
+```typescript
+import { z } from 'zod';
+
+/**
+ * 📊 Metrics Route Validation Schemas
+ *
+ * Schemas para validação de rotas de métricas
+ */
+
+export class MetricsRouteValidator {
+  /**
+   * Schema para GET /metrics/session/:sessionId
+   * @description Recupera métricas de uma sessão específica
+   */
+  static getSessionMetrics() {
+    return {
+      params: z.object({
+        sessionId: z.string().uuid('Session ID must be a valid UUID'),
+      }),
+    };
+  }
+
+  /**
+   * Schema para GET /metrics/user/:userId
+   * @description Recupera métricas de um usuário específico
+   */
+  static getUserMetrics() {
+    return {
+      params: z.object({
+        userId: z.string().min(1, 'User ID is required'),
+      }),
+      query: z.object({
+        days: z
+          .string()
+          .optional()
+          .refine(val => !val || (!isNaN(Number(val)) && Number(val) > 0), {
+            message: 'Days must be a positive number',
+          })
+          .transform(val => (val ? Number(val) : undefined)),
+      }),
+    };
+  }
+}
+```
+
+## 📝 Tipos de Validação
+
+### **1. Validação de Parâmetros (`params`)**
+
+```typescript
+params: z.object({
+  // UUIDs
+  id: z.string().uuid('ID must be a valid UUID'),
+  sessionId: z.string().uuid('Session ID must be a valid UUID'),
+
+  // IDs numéricos
+  userId: z.string().min(1, 'User ID is required'),
+  prefectureId: z.string().min(1, 'Prefecture ID is required'),
+
+  // Identificadores customizados
+  slug: z
+    .string()
+    .min(1, 'Slug is required')
+    .regex(/^[a-z0-9-]+$/, 'Invalid slug format'),
+});
+```
+
+### **2. Validação de Query Parameters (`query`)**
+
+```typescript
+query: z.object({
+  // Paginação
+  page: z
+    .string()
+    .optional()
+    .refine(val => !val || (!isNaN(Number(val)) && Number(val) > 0), {
+      message: 'Page must be a positive number',
+    })
+    .transform(val => (val ? Number(val) : 1)),
+
+  limit: z
+    .string()
+    .optional()
+    .refine(val => !val || (!isNaN(Number(val)) && Number(val) > 0 && Number(val) <= 100), {
+      message: 'Limit must be between 1 and 100',
+    })
+    .transform(val => (val ? Number(val) : 10)),
+
+  // Filtros
+  search: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'pending']).optional(),
+  category: z.string().min(1, 'Category cannot be empty').optional(),
+
+  // Datas
+  startDate: z.string().datetime('Invalid start date format').optional(),
+  endDate: z.string().datetime('Invalid end date format').optional(),
+
+  // Ordenação
+  sortBy: z.enum(['created_at', 'updated_at', 'name']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+});
+```
+
+### **3. Validação de Body (`body`)**
+
+```typescript
+body: z.object({
+  // Campos obrigatórios
+  name: z.string().min(1, 'Name is required').max(100, 'Name too long'),
+  email: z.string().email('Invalid email format'),
+
+  // Campos opcionais
+  description: z.string().max(500, 'Description too long').optional(),
+  tags: z.array(z.string().min(1, 'Tag cannot be empty')).optional(),
+
+  // Validações numéricas
+  age: z.number().int().positive('Age must be positive').optional(),
+  price: z.number().positive('Price must be positive').optional(),
+
+  // Validações de data
+  birthDate: z.string().datetime('Invalid birth date format').optional(),
+
+  // Validações de enum
+  role: z.enum(['user', 'admin', 'moderator']).default('user'),
+  status: z.enum(['active', 'inactive']).optional(),
+
+  // Validações de objeto
+  address: z
+    .object({
+      street: z.string().min(1, 'Street is required'),
+      city: z.string().min(1, 'City is required'),
+      zipCode: z.string().regex(/^\d{5}-?\d{3}$/, 'Invalid ZIP code format'),
+      country: z.string().min(2, 'Country code must have 2 characters'),
+    })
+    .optional(),
+
+  // Validações de array
+  permissions: z.array(z.string().min(1, 'Permission cannot be empty')).optional(),
+});
+```
+
+## 🔧 Validações Avançadas
+
+### **Transformações de Dados**
+
+```typescript
+// Converter string para number
+price: z.string()
+    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+        message: 'Price must be a positive number'
+    })
+    .transform((val) => Number(val)),
+
+// Converter string para boolean
+isActive: z.string()
+    .optional()
+    .transform((val) => val === 'true' || val === '1'),
+
+// Converter string para array
+tags: z.string()
+    .optional()
+    .transform((val) => val ? val.split(',').map(tag => tag.trim()) : []),
+
+// Normalizar string
+name: z.string()
+    .min(1, 'Name is required')
+    .transform((val) => val.trim().toLowerCase()),
+```
+
+### **Validações Customizadas**
+
+```typescript
+// Validação de CPF
+cpf: z.string()
+    .min(11, 'CPF must have at least 11 characters')
+    .max(14, 'CPF must have at most 14 characters')
+    .refine((val) => {
+        const cleanCpf = val.replace(/\D/g, '');
+        return /^\d{11}$/.test(cleanCpf);
+    }, {
+        message: 'Invalid CPF format'
+    }),
+
+// Validação de placa de veículo
+plate: z.string()
+    .regex(/^[A-Z]{3}[0-9][0-9A-Z][0-9]{2}$/, 'Invalid vehicle plate format')
+    .transform((val) => val.toUpperCase()),
+
+// Validação de telefone
+phone: z.string()
+    .regex(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, 'Invalid phone format')
+    .transform((val) => val.replace(/\D/g, '')),
+
+// Validação de senha forte
+password: z.string()
+    .min(8, 'Password must have at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
+        message: 'Password must contain uppercase, lowercase, number and special character'
+    }),
+```
+
+### **Validações Condicionais**
+
+```typescript
+// Validação condicional baseada em campo
+body: z.object({
+  type: z.enum(['individual', 'company']),
+  name: z.string().min(1, 'Name is required'),
+  document: z.string().min(1, 'Document is required'),
+  companyInfo: z
+    .object({
+      cnpj: z.string().regex(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, 'Invalid CNPJ format'),
+      companyName: z.string().min(1, 'Company name is required'),
+    })
+    .optional(),
+}).refine(
+  data => {
+    if (data.type === 'company' && !data.companyInfo) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Company information is required for company type',
+    path: ['companyInfo'],
+  }
+);
+
+// Validação de data de início e fim
+body: z.object({
+  startDate: z.string().datetime('Invalid start date format'),
+  endDate: z.string().datetime('Invalid end date format'),
+}).refine(
+  data => {
+    return new Date(data.startDate) < new Date(data.endDate);
+  },
+  {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  }
+);
+```
+
+## 📊 Schemas por Domínio
+
+### **Assistant Schema**
+
+```typescript
+export class AssistantRouteValidator {
+  static postWebhook() {
+    return {
+      body: z.object({
+        session_id: z.string().uuid('Session ID must be a valid UUID'),
+        payload: z.object({
+          prefeitura_id: z.number().int().positive('Prefecture ID must be positive'),
+          prefeitura_sigla: z.string().min(1, 'Prefecture acronym is required'),
+          prefeitura_nome: z.string().min(1, 'Prefecture name is required'),
+          prefeitura_timezone: z.string().min(1, 'Prefecture timezone is required'),
+          usuario_id: z.number().int().positive('User ID must be positive'),
+          usuario_nome: z.string().min(1, 'User name is required'),
+          usuario_email: z.string().email('Invalid email format'),
+          usuario_cpf: z.string().min(11, 'CPF must have at least 11 characters'),
+        }),
+        prefecture_user_token: z.string().min(1, 'Prefecture user token is required'),
+        user_token: z.string().min(1, 'User token is required'),
+        message: z.string().min(1, 'Message is required'),
+        message_date: z.string().datetime('Invalid message date format'),
+        message_date_local: z.string().datetime('Invalid local message date format'),
+        assistant_id: z.string().uuid('Assistant ID must be a valid UUID').optional(),
+        new_chat: z.boolean().optional(),
+      }),
+    };
+  }
+}
+```
+
+### **Metrics Schema**
+
+```typescript
+export class MetricsRouteValidator {
+  static getSessionMetrics() {
+    return {
+      params: z.object({
+        sessionId: z.string().uuid('Session ID must be a valid UUID'),
+      }),
+    };
+  }
+
+  static getUserMetrics() {
+    return {
+      params: z.object({
+        userId: z.string().min(1, 'User ID is required'),
+      }),
+      query: z.object({
+        days: z
+          .string()
+          .optional()
+          .refine(val => !val || (!isNaN(Number(val)) && Number(val) > 0), {
+            message: 'Days must be a positive number',
+          })
+          .transform(val => (val ? Number(val) : undefined)),
+      }),
+    };
+  }
+}
+```
+
+## ✅ Boas Práticas
+
+### **1. Nomenclatura**
+
+- **Classes**: `[Nome]RouteSchema` (PascalCase)
+- **Métodos**: `[verbo][Recurso]()` (camelCase)
+- **Arquivos**: `[nome].schema.ts` (kebab-case)
+
+### **2. Documentação**
+
+- Sempre documentar o propósito de cada schema
+- Incluir descrição da funcionalidade
+- Comentar validações complexas
+
+### **3. Organização**
+
+- Um schema por domínio funcional
+- Métodos agrupados por operação
+- Validações reutilizáveis em `shared.validator.ts`
+
+### **4. Validações**
+
+- Usar mensagens de erro descritivas
+- Aplicar transformações quando necessário
+- Validar limites de negócio
+- Considerar performance
+
+### **5. Type Safety**
+
+- Sempre usar tipos específicos
+- Evitar `any` e `unknown`
+- Aproveitar inferência do Zod
+- Exportar tipos quando necessário
+
+## 🔄 Migração e Evolução
+
+### **Versionamento de Schemas**
+
+```typescript
+export class UserRouteValidator {
+  // v1 - Schema original
+  static createUser() {
+    return {
+      body: z.object({
+        name: z.string().min(1, 'Name is required'),
+        email: z.string().email('Invalid email format'),
+      }),
+    };
+  }
+
+  // v2 - Schema com novos campos
+  static createUserV2() {
+    return {
+      body: z.object({
+        name: z.string().min(1, 'Name is required'),
+        email: z.string().email('Invalid email format'),
+        phone: z.string().optional(),
+        address: z
+          .object({
+            street: z.string().min(1, 'Street is required'),
+            city: z.string().min(1, 'City is required'),
+          })
+          .optional(),
+      }),
+    };
+  }
+}
+```
+
+### **Deprecação de Schemas**
+
+```typescript
+export class UserRouteValidator {
+  /**
+   * @deprecated Use createUserV2 instead
+   */
+  static createUser() {
+    // Schema antigo mantido para compatibilidade
+  }
+}
+```
+
+## 🎯 Conclusão
+
+O padrão de **Schemas** oferece:
+
+- ✅ **Validação robusta** de entrada
+- ✅ **Type safety** completo
+- ✅ **Mensagens de erro** claras
+- ✅ **Transformações** automáticas
+- ✅ **Organização** clara por domínio
+- ✅ **Manutenibilidade** alta
+- ✅ **Reutilização** de validações
+
+Este padrão garante que todas as rotas HTTP tenham validação consistente e type-safe, melhorando significativamente a qualidade e confiabilidade da API.
+
+---
+
+_Este guia deve ser seguido para todos os novos schemas e atualizado conforme necessário._
