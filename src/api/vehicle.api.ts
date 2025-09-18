@@ -3,7 +3,7 @@ import { logger } from "../utils/logger.util";
 import { APIVehicle, Vehicle } from "../types/vehicle.types";
 
 export const fetchUserVehicles = async (
-    userId: string,
+    userId: number,
     prefectureToken: string
 ): Promise<APIVehicle[]> => new Promise((resolve, reject) => {
     const path = `/v4/usuarios/${userId}/veiculos`;
@@ -39,7 +39,7 @@ export const fetchUserVehicles = async (
         });
 });
 export const postCreateVehicle = async (
-    userId: string,
+    userId: number,
     vehicle: { plate: string; model: string; vehicle_type_id: number },
     prefectureToken: string
 ) => new Promise((resolve, reject) => {

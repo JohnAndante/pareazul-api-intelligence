@@ -52,3 +52,29 @@ export interface RegisterVehicleParams {
     userId: string;
     vehicle: InputVehicle;
 }
+
+// Service parameter types
+export interface GetUserVehiclesParams {
+    userId: number;
+    plate?: string;
+    model?: string;
+}
+
+export interface RegisterUserVehicleParams {
+    userId: number;
+    vehicle: {
+        plate: string;
+        model: string;
+        vehicle_type_id: number;
+    };
+}
+
+// Service response types
+export interface GetUserVehiclesResponse {
+    text: string;
+    data?: FormattedVehicle[];
+}
+
+export interface RegisterUserVehicleResponse {
+    text: string;
+}

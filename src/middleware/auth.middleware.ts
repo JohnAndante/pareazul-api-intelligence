@@ -2,6 +2,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger.util';
+import { env } from '../config/environment.config';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -139,6 +140,58 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
     });
   }
   next();
+};
+
+/**
+ * Middleware específico para validar Bearer token do webservice
+ */
+export const webserviceAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization as string;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('Webservice auth: Missing or invalid Bearer token', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+      });
+
+      return res.status(401).json({
+        error: 'Bearer token required',
+        code: 'MISSING_BEARER_TOKEN',
+      });
+    }
+
+    const token = authHeader.substring(7);
+
+    if (token !== env.API_BEARER_TOKEN) {
+      logger.warn('Webservice auth: Invalid Bearer token', {
+        ip: req.ip,
+        path: req.path,
+        method: req.method,
+      });
+
+      return res.status(401).json({
+        error: 'Invalid Bearer token',
+        code: 'INVALID_BEARER_TOKEN',
+      });
+    }
+
+    // Token válido, continua
+    req.user = {
+      id: 'webservice',
+      type: 'webservice',
+      token: token
+    };
+
+    next();
+  } catch (error) {
+    logger.error('Webservice auth error:', error);
+    return res.status(500).json({
+      error: 'Authentication error',
+      code: 'AUTH_ERROR',
+    });
+  }
 };
 
 /**

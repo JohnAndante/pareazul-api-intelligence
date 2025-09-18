@@ -13,7 +13,7 @@ const getUserInfoTool = new DynamicStructuredTool({
         'Required information: user ID to identify the user in the system.' +
         'You can retrieve it from the session cache using the memory service.',
     schema: GetUserInfoSchema,
-    func: async (input: { userId: string }) => {
+    func: async (input: { userId: number }) => {
         try {
             const { userId } = input;
             logger.info(`[get_user_info] Buscando informações para userId: ${userId}`);
@@ -26,7 +26,7 @@ const getUserInfoTool = new DynamicStructuredTool({
 
             logger.info(`[get_user_info] SessionCache encontrado para userId: ${userId}, assistant_chat_id: ${sessionCache.assistant_chat_id}`);
 
-            const session = await chatRepository.findById(sessionCache.assistant_chat_id);
+            const session = await chatRepository.findById(parseInt(sessionCache.assistant_chat_id));
             if (!session) {
                 logger.warn(`[get_user_info] Sessão não encontrada no banco para assistant_chat_id: ${sessionCache.assistant_chat_id}`);
                 return 'Sessão não encontrada';
@@ -80,7 +80,7 @@ const getSessionStatusTool = new DynamicStructuredTool({
     func: async (input: { sessionId: string }) => {
         try {
             const { sessionId } = input;
-            const session = await chatRepository.findById(sessionId);
+            const session = await chatRepository.findById(parseInt(sessionId));
             if (!session) {
                 return 'Sessão não encontrada';
             }

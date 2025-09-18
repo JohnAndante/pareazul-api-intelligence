@@ -18,7 +18,7 @@ export class SessionService {
         assistant_id?: string;
     }): Promise<SessionResult | null> {
         const { payload, assistant_id } = input;
-        const userId = payload.usuario_id as string;
+        const userId = payload.usuario_id as number;
         const prefectureId = payload.prefeitura_id as string;
 
         return Promise.resolve()
@@ -101,7 +101,7 @@ export class SessionService {
     /**
      * Busca sessão ativa por userId e assistantId
      */
-    findActiveSession(userId: string, assistantId: string): Promise<ChatSession | null> {
+    findActiveSession(userId: number, assistantId: string): Promise<ChatSession | null> {
         return chatRepository.findActiveSession(userId, assistantId)
             .then(session => session)
             .catch(error => {
@@ -113,7 +113,7 @@ export class SessionService {
     /**
      * Inativa sessões antigas do usuário (replicando lógica do n8n)
      */
-    inactivateOldSessions(userId: string): Promise<void> {
+    inactivateOldSessions(userId: number): Promise<void> {
         return chatRepository.inactivateUserSessions(userId)
             .then(() => {
                 logger.debug(`[SessionService] Inactivated old sessions for user: ${userId}`);
@@ -126,7 +126,7 @@ export class SessionService {
     /**
      * Recupera sessão por ID
      */
-    getSessionById(sessionId: string): Promise<ChatSession | null> {
+    getSessionById(sessionId: number): Promise<ChatSession | null> {
         return chatRepository.findById(sessionId)
             .then(session => session)
             .catch(error => {

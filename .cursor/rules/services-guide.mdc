@@ -122,6 +122,53 @@ async methodNameWrong(params: ParamsType): Promise<ReturnType> {
 
 ## 🔧 Componentes Obrigatórios
 
+### **0. Tipagem Externa Obrigatória**
+
+**REGRA CRÍTICA:** Todos os services DEVEM usar tipagem externa para parâmetros e retornos.
+
+#### **Parâmetros com 1 campo:**
+
+```typescript
+// ✅ BOM: Tipagem inline para parâmetro simples
+async getUserBalance(userId: number): Promise<GetUserBalanceResponse> {
+    // implementação
+}
+```
+
+#### **Parâmetros com 2+ campos:**
+
+```typescript
+// ✅ BOM: Tipagem externa obrigatória
+async getUserVehicles(params: GetUserVehiclesParams): Promise<GetUserVehiclesResponse> {
+    const { userId, plate, model } = params;
+    // implementação
+}
+
+// ❌ RUIM: Tipagem inline para múltiplos parâmetros
+async getUserVehicles({ userId, plate, model }: { userId: number; plate?: string; model?: string }): Promise<{ text: string; data?: unknown }> {
+    // implementação
+}
+```
+
+#### **Estrutura de Tipos Externos:**
+
+```typescript
+// src/types/[domain].types.ts
+
+// Service parameter types
+export interface GetUserVehiclesParams {
+  userId: number;
+  plate?: string;
+  model?: string;
+}
+
+// Service response types
+export interface GetUserVehiclesResponse {
+  text: string;
+  data?: FormattedVehicle[];
+}
+```
+
 ### **1. Imports Padrão**
 
 ```typescript
@@ -129,7 +176,10 @@ async methodNameWrong(params: ParamsType): Promise<ReturnType> {
 import { [DomainApi] } from '../api/[domain].api';
 import { [DomainRepository] } from '../repositories/[domain].repository';
 import { logger } from '../utils/logger.util';
-import { [DomainType] } from '../types/[domain].types';
+import {
+    [DomainParamsType],
+    [DomainResponseType]
+} from '../types/[domain].types';
 ```
 
 ### **2. Logger Específico**
@@ -144,11 +194,13 @@ export class [Domain]Service {
 ### **3. Estrutura de Método**
 
 ```typescript
-async methodName(params: ParamsType): Promise<ReturnType> {
+async methodName(params: DomainParamsType): Promise<DomainResponseType> {
+    const { field1, field2 } = params;
+
     return new Promise((resolve, reject) => {
         // 1. Validação de parâmetros
-        if (!params.requiredField) {
-            this.logger.error(`Missing required field: requiredField`);
+        if (!field1) {
+            this.logger.error(`Missing required field: field1`);
             return reject({ text: "Missing required field." });
         }
 

@@ -224,9 +224,21 @@ Rules:
 - **\`faq_search\`**: Search FAQ for general questions about how the system works
 
 **CREATIVE TOOL COMBINATIONS:**
-1. **For activation requests**: \`getUserVehicles\` → \`getPrefectureRules\` → \`checkVehicleCurrentActivations\` → present options
+1. **For activation requests**: \`getUserVehicles\` → \`getCurrentNotificationsForVehicle\` → \`getPrefectureRules\` → \`checkVehicleCurrentActivations\` → present options
 2. **For plate-specific questions**: \`getUserVehicles\` (verify ownership) → \`checkVehicleCurrentActivations\` or \`getCurrentNotificationsForVehicle\`
 3. **For "do I have fines?"**: \`getAllUserVehiclesCurrentNotifications\` (check all at once)
+
+**⚠️ IMPORTANT: VEHICLE ACTIVATION WORKFLOW:**
+Before activating ANY vehicle, you MUST follow this sequence:
+1. **Verify vehicle ownership**: Use \`getUserVehicles\` to confirm the vehicle belongs to the user
+2. **Check for notifications**: Use \`getCurrentNotificationsForVehicle\` to check for pending fines/irregularities
+3. **If notifications exist**: Inform the user about the notifications and ask them to resolve them first
+4. **If no notifications**: Proceed with normal activation workflow (\`getPrefectureRules\` → \`checkVehicleCurrentActivations\` → present options)
+
+**🚨 NOTIFICATION RULES:**
+- **Tolerance notifications**: These are warnings and don't block activation
+- **Open notifications**: These are active fines/irregularities that BLOCK activation
+- **Always check notifications before activation** - this prevents invalid activations
 4. **For general questions**: \`faq_search\` first, then provide comprehensive answer
 
 **REMEMBER**: Use multiple tools in sequence to provide complete solutions!

@@ -395,11 +395,11 @@ Error → Log → Re-throw → Service Error Handling
 ### **1. API Client Factory**
 
 ```typescript
-// Criar factory para diferentes tipos de cliente
+// Criar factory para diferentes tipos de cliente (webservice, backend, etc)
 class APIClientFactory {
-  static createPareazulClient(token: string) {
+  static createWebserviceClient(token: string) {
     return axios.create({
-      baseURL: process.env.PAREAZUL_API_URL,
+      baseURL: process.env.PAREAZUL_API_WEBSERVICE,
       headers: { 'x-access-key': token },
       timeout: 30000,
     });
@@ -411,7 +411,7 @@ class APIClientFactory {
 
 ```typescript
 // Interceptor para padronizar responses
-axiosWebservice.interceptors.response.use(
+axiosWebserviceClient.interceptors.response.use(
   response => {
     // Validação automática de response
     if (!response.data) {
@@ -431,16 +431,24 @@ axiosWebservice.interceptors.response.use(
 
 ```typescript
 // Implementar retry automático para falhas temporárias
-const retryRequest = async (fn: () => Promise<any>, retries = 3) => {
-  for (let i = 0; i < retries; i++) {
+const retryRequest = async (fn: () => Promise<any>, retries = 3, delay = 1000) => {
+  let lastError: Error | null = null;
+
+  for (let i = 0; i < retries; i += 1) {
     try {
       return await fn();
     } catch (error) {
+      lastError = error as Error;
       if (i === retries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+      await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+      lastError = null;
     }
   }
+
+  throw lastError;
 };
+
+export default retryRequest;
 ```
 
 ## 🎯 Conclusão

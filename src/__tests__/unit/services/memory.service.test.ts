@@ -45,7 +45,7 @@ describe('MemoryService', () => {
     });
 
     it('should handle Redis errors gracefully', async () => {
-        const userId = 'user123';
+        const userId = 123;
         const sessionData: SessionCache = {
             assistant_id: 'assistant123',
             assistant_chat_id: 'chat123',
@@ -84,7 +84,7 @@ describe('getSessionCache', () => {
     });
 
     it('should retrieve session cache successfully', async () => {
-        const userId = 'user123';
+        const userId = 123;
         const sessionData: SessionCache = {
             assistant_id: 'assistant123',
             assistant_chat_id: 'chat123',
@@ -111,7 +111,7 @@ describe('getSessionCache', () => {
     });
 
     it('should return null when no cache found', async () => {
-        const userId = 'user123';
+        const userId = 123;
 
         mockRedis.get.mockResolvedValue(null);
 
@@ -122,7 +122,7 @@ describe('getSessionCache', () => {
     });
 
     it('should handle Redis errors gracefully', async () => {
-        const userId = 'user123';
+        const userId = 123;
 
         mockRedis.get.mockRejectedValue(new Error('Redis connection failed'));
 

@@ -14,7 +14,7 @@ class ActivationService {
     checkCurrentVehicleActivation(params: CheckVehicleActivationParams): Promise<{ text: string }> {
         const { userId, vehiclePlate } = params;
 
-        return memoryService.getSessionCache(userId.toString())
+        return memoryService.getSessionCache(userId)
             .then(async userPayload => {
                 if (!userPayload) {
                     this.logger.error(`User session not found for userId: ${userId}`);
@@ -58,7 +58,7 @@ class ActivationService {
     handleRegisterVehicleActivation(input: HandleRegisterVehicleActivationParams): Promise<{ text: string }> {
         const { userId, vehiclePlate, timeValueRuleId, previousActivationId, extend } = input;
 
-        return memoryService.getSessionCache(userId.toString())
+        return memoryService.getSessionCache(userId)
             .then(async userPayload => {
                 if (!userPayload) {
                     this.logger.error(`User session not found for userId: ${userId}`);
@@ -74,7 +74,7 @@ class ActivationService {
                 } = userPayload;
 
                 // Verificando se o veículo está registrado para o usuário
-                const userVehicles = await fetchUserVehicles(userId.toString(), prefectureUserToken);
+                const userVehicles = await fetchUserVehicles(userId, prefectureUserToken);
 
                 const vehicle = userVehicles.find(v => clearPlate(v.plate) === clearPlate(vehiclePlate));
 

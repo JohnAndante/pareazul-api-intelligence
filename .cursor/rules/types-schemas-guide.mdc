@@ -139,6 +139,54 @@ export interface RawVehicleActivation {
 }
 ```
 
+### **3. Service Types (Obrigatório)**
+
+**REGRA CRÍTICA:** Todos os services DEVEM ter tipos externos para parâmetros e retornos.
+
+```typescript
+// src/types/[domain].types.ts
+
+// Service parameter types
+export interface GetUserVehiclesParams {
+  userId: number;
+  plate?: string;
+  model?: string;
+}
+
+export interface RegisterUserVehicleParams {
+  userId: number;
+  vehicle: {
+    plate: string;
+    model: string;
+    vehicle_type_id: number;
+  };
+}
+
+// Service response types
+export interface GetUserVehiclesResponse {
+  text: string;
+  data?: FormattedVehicle[];
+}
+
+export interface RegisterUserVehicleResponse {
+  text: string;
+}
+```
+
+#### **Convenções de Nomenclatura para Services:**
+
+```typescript
+// ✅ BOM: Padrão consistente
+export interface Get[Entity]Params { }           // Parâmetros de entrada
+export interface Get[Entity]Response { }         // Resposta de saída
+export interface Create[Entity]Params { }        // Parâmetros de criação
+export interface Create[Entity]Response { }      // Resposta de criação
+
+// ❌ RUIM: Nomenclatura inconsistente
+export interface UserVehiclesInput { }           // Deve ser GetUserVehiclesParams
+export interface VehicleResult { }               // Deve ser GetUserVehiclesResponse
+```
+
 ### **3. Chat & Session Types**
 
 ```typescript

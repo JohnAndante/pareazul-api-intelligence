@@ -129,7 +129,7 @@ export const attackDetection = (req: Request, res: Response, next: NextFunction)
     });
 
     // Em produção, você pode querer bloquear essas requests
-    if (process.env.NODE_ENV === 'production' && process.env.BLOCK_ATTACKS === 'true') {
+    if (process.env.NODE_ENV === 'production') {
       return res.status(403).json({
         error: 'Suspicious request blocked',
         code: 'SECURITY_VIOLATION',

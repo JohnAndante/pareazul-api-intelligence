@@ -13,7 +13,7 @@ export interface FindUserParams {
 }
 
 export interface BalanceParams {
-    userId: string;
+    userId: number;
     prefectureId: string;
 }
 
@@ -26,4 +26,14 @@ export interface DriverSearchResponse {
 
 export interface BalanceResponse {
     saldo: number;
+}
+
+// Service parameter types
+export interface GetUserBalanceParams {
+    userId: number;
+}
+
+// Service response types
+export interface GetUserBalanceResponse {
+    text: string;
 }

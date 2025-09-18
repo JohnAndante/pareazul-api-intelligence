@@ -2,6 +2,7 @@ import { MemoryService } from './memory.service';
 import { fetchUserBalance } from '../api/user.api';
 import { formatCurrency } from '../utils/string.utils';
 import { logger } from '../utils/logger.util';
+import { GetUserBalanceParams, GetUserBalanceResponse } from '../types/user.types';
 
 export class UserService {
     private readonly memoryService: MemoryService;
@@ -10,11 +11,12 @@ export class UserService {
         this.memoryService = new MemoryService();
     }
 
-    async getUserBalance({ userId }: { userId: number }): Promise<{ text: string }> {
+    async getUserBalance(params: GetUserBalanceParams): Promise<GetUserBalanceResponse> {
+        const { userId } = params;
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId.toString());
+                const sessionData = await this.memoryService.getSessionCache(userId);
 
                 if (!sessionData) {
                     logger.warn('[UserService] No session data found for user:', userId);
@@ -26,7 +28,7 @@ export class UserService {
                     prefecture_user_token: prefectureUserToken
                 } = sessionData;
 
-                const balance = await fetchUserBalance({ userId: userId.toString(), prefectureId, prefectureToken: prefectureUserToken });
+                const balance = await fetchUserBalance({ userId, prefectureId, prefectureToken: prefectureUserToken });
 
                 if (balance === null) {
                     return {

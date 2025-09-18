@@ -19,7 +19,7 @@ export abstract class BaseRepository<T> {
         return this.useAdmin ? supabaseAdmin! : supabase;
     }
 
-    async findById(id: string): Promise<T | null> {
+    async findById(id: number): Promise<T | null> {
         try {
             const { data, error } = await this.client
                 .from(this.tableName)
@@ -81,7 +81,7 @@ export abstract class BaseRepository<T> {
         }
     }
 
-    async update(id: string, data: Partial<T>): Promise<T | null> {
+    async update(id: number, data: Partial<T>): Promise<T | null> {
         try {
             const { data: result, error } = await this.client
                 .from(this.tableName)
@@ -102,7 +102,7 @@ export abstract class BaseRepository<T> {
         }
     }
 
-    async delete(id: string): Promise<boolean> {
+    async delete(id: number): Promise<boolean> {
         try {
             const { error } = await this.client
                 .from(this.tableName)

@@ -14,7 +14,7 @@ export class MemoryService {
     /**
      * Atualiza apenas o assistant_id na chave compartilhada do Redis
      */
-    async setSessionCache(userId: string, sessionData: SessionCache): Promise<boolean> {
+    async setSessionCache(userId: number, sessionData: SessionCache): Promise<boolean> {
         try {
             const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
 
@@ -53,7 +53,7 @@ export class MemoryService {
     /**
      * Recupera metadados da sessão do Redis
      */
-    async getSessionCache(userId: string): Promise<SessionCache | null> {
+    async getSessionCache(userId: number): Promise<SessionCache | null> {
         try {
             const key = `${this.SESSION_CACHE_PREFIX}${userId}`;
             const value = await redis.get(key);

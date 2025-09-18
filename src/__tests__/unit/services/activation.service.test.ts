@@ -20,10 +20,8 @@ jest.mock('../../../api/prefecture.api', () => ({
     fetchPrefectureRules: jest.fn(),
 }));
 
-jest.mock('../../../utils/string.util', () => ({
-    StringUtil: {
-        clearPlate: jest.fn((plate) => plate),
-    },
+jest.mock('../../../utils/string.utils', () => ({
+    clearPlate: jest.fn((plate) => plate),
 }));
 
 jest.mock('../../../utils/logger.util', () => ({
@@ -49,14 +47,14 @@ describe('ActivationService', () => {
         const { activateVehicle, fetchVehicleCurrentActivations } = require('../../../api/activation.api');
         const { fetchUserVehicles } = require('../../../api/vehicle.api');
         const { fetchPrefectureRules } = require('../../../api/prefecture.api');
-        const { StringUtil } = require('../../../utils/string.util');
+        const { clearPlate } = require('../../../utils/string.utils');
 
         mockMemoryService = memoryService;
         mockActivateVehicle = activateVehicle;
         mockFetchVehicleCurrentActivations = fetchVehicleCurrentActivations;
         mockFetchUserVehicles = fetchUserVehicles;
         mockFetchPrefectureRules = fetchPrefectureRules;
-        mockStringUtil = StringUtil;
+        mockStringUtil = { clearPlate };
     });
 
     afterEach(() => {
@@ -67,7 +65,7 @@ describe('ActivationService', () => {
         it('should return activation details when vehicle is activated', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
             };
 
@@ -124,7 +122,7 @@ describe('ActivationService', () => {
         it('should return no activation message when vehicle is not activated', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
             };
 
@@ -159,7 +157,7 @@ describe('ActivationService', () => {
         it('should return error when user session not found', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
             };
 
@@ -175,7 +173,7 @@ describe('ActivationService', () => {
         it('should handle errors gracefully', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
             };
 
@@ -193,7 +191,7 @@ describe('ActivationService', () => {
         it('should register vehicle activation successfully', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
                 timeValueRuleId: 1,
                 extend: false,
@@ -290,7 +288,7 @@ describe('ActivationService', () => {
                 prefectureId: '1',
                 timeValueRuleId: 1,
                 vehicleTypeId: 1,
-                userId: 'user123',
+                userId: 123,
                 userToken: 'token123',
                 extend: false,
                 previousActivationId: undefined,
@@ -300,7 +298,7 @@ describe('ActivationService', () => {
         it('should return error when vehicle not registered for user', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
                 timeValueRuleId: 1,
                 extend: false,
@@ -337,7 +335,7 @@ describe('ActivationService', () => {
         it('should return error when user session not found', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
                 timeValueRuleId: 1,
                 extend: false,
@@ -355,7 +353,7 @@ describe('ActivationService', () => {
         it('should handle API errors with specific error codes', async () => {
             // Arrange
             const params = {
-                userId: 'user123',
+                userId: 123,
                 vehiclePlate: 'ABC1234',
                 timeValueRuleId: 1,
                 extend: false,

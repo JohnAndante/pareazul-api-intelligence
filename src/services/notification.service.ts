@@ -5,7 +5,13 @@ import { fetchVehiclesNotifications } from '../api/notification.api';
 import { transformNotificationsToFormatted } from '../utils/notification.utils';
 import { formatCurrency } from '../utils/string.utils';
 import { logger } from '../utils/logger.util';
-import type { VehicleNotificationFormatted } from '../types/notification.types';
+import type {
+    VehicleNotificationFormatted,
+    GetAllUserVehiclesCurrentNotificationsParams,
+    GetAllUserVehiclesCurrentNotificationsResponse,
+    GetCurrentNotificationsForVehicleParams,
+    GetCurrentNotificationsForVehicleResponse
+} from '../types/notification.types';
 
 export class NotificationService {
     private readonly memoryService: MemoryService;
@@ -14,8 +20,8 @@ export class NotificationService {
         this.memoryService = new MemoryService();
     }
 
-    async getAllUserVehiclesCurrentNotifications(payload: { userId: string }): Promise<{ text: string }> {
-        const { userId } = payload;
+    async getAllUserVehiclesCurrentNotifications(params: GetAllUserVehiclesCurrentNotificationsParams): Promise<GetAllUserVehiclesCurrentNotificationsResponse> {
+        const { userId } = params;
 
         return Promise.resolve()
             .then(async () => {
@@ -61,8 +67,8 @@ export class NotificationService {
             });
     }
 
-    async getCurrentNotificationsForVehicle(payload: { userId: string, vehiclePlate: string }): Promise<{ text: string }> {
-        const { userId, vehiclePlate } = payload;
+    async getCurrentNotificationsForVehicle(params: GetCurrentNotificationsForVehicleParams): Promise<GetCurrentNotificationsForVehicleResponse> {
+        const { userId, vehiclePlate } = params;
         const vehiclePlateFormatted = vehiclePlate.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
         return Promise.resolve()

@@ -18,7 +18,7 @@ export class PrefectureService {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId.toString());
+                const sessionData = await this.memoryService.getSessionCache(userId);
 
                 if (!sessionData) {
                     logger.warn('[PrefectureService] No session data found for user:', userId);
@@ -74,7 +74,7 @@ export class PrefectureService {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId.toString());
+                const sessionData = await this.memoryService.getSessionCache(userId);
 
                 if (!sessionData) {
                     logger.warn('[PrefectureService] No session data found for user:', userId);
@@ -119,7 +119,7 @@ export class PrefectureService {
         return Promise.resolve()
             .then(async () => {
                 // Busca dados da sessão no cache
-                const sessionData = await this.memoryService.getSessionCache(userId.toString());
+                const sessionData = await this.memoryService.getSessionCache(userId);
 
                 if (!sessionData) {
                     logger.warn('[PrefectureService] No session data found for user:', userId);

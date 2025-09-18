@@ -44,3 +44,22 @@ export interface VehicleNotificationFormatted {
         notificationValue: number;
     };
 }
+
+// Service parameter types
+export interface GetAllUserVehiclesCurrentNotificationsParams {
+    userId: number;
+}
+
+export interface GetCurrentNotificationsForVehicleParams {
+    userId: number;
+    vehiclePlate: string;
+}
+
+// Service response types
+export interface GetAllUserVehiclesCurrentNotificationsResponse {
+    text: string;
+}
+
+export interface GetCurrentNotificationsForVehicleResponse {
+    text: string;
+}

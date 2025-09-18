@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { assistantController } from '../controllers/assistant.controller';
-import { simpleAuth } from '../middleware/auth.middleware';
+import { webserviceAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
 import { WebhookRequestSchema } from '../agents/assistant/schemas';
 
@@ -9,18 +9,18 @@ const router = Router();
 // Health check
 router.get('/health', assistantController.health.bind(assistantController));
 
-// Webhook endpoint (replicando fluxo n8n)
+// Webhook endpoint (replicando fluxo n8n) - Usa Bearer token do webservice
 router.post(
     '/webhook',
-    simpleAuth,
+    webserviceAuth,
     validate({ body: WebhookRequestSchema }),
     assistantController.webhook.bind(assistantController)
 );
 
-// Endpoint para processar mensagem diretamente
+// Endpoint para processar mensagem diretamente - Usa Bearer token do webservice
 router.post(
     '/message',
-    simpleAuth,
+    webserviceAuth,
     assistantController.processMessage.bind(assistantController)
 );
 

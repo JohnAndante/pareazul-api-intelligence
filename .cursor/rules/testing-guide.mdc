@@ -793,10 +793,15 @@ import { jest } from '@jest/globals';
 
 // Mock environment variables
 process.env.NODE_ENV = 'test';
-process.env.REDIS_URL = 'redis://localhost:6379';
+process.env.REDIS_HOST = 'redis';
+process.env.REDIS_PORT = '6379';
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_ANON_KEY = 'test-key';
 process.env.OPENAI_API_KEY = 'test-openai-key';
+process.env.PAREAZUL_API_WEBSERVICE = 'https://test-api.pareazul.com';
+process.env.API_SECRET_KEY = 'test-secret-key';
+process.env.SESSION_TTL = '3600';
+process.env.MEMORY_BUFFER_SIZE = '20';
 
 // Global test timeout
 jest.setTimeout(30000);

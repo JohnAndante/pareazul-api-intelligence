@@ -7,7 +7,7 @@ export class ChatRepository extends BaseRepository<ChatSession> {
         super('assistant_chat_details', true); // Use admin client
     }
 
-    async findActiveByUserId(userId: string): Promise<ChatSession | null> {
+    async findActiveByUserId(userId: number): Promise<ChatSession | null> {
         try {
             const client = this.client;
             const { data, error } = await client
@@ -34,7 +34,7 @@ export class ChatRepository extends BaseRepository<ChatSession> {
     }
 
 
-    async findActiveByAssistantId(assistantId: string): Promise<ChatSession | null> {
+    async findActiveByAssistantId(assistantId: number): Promise<ChatSession | null> {
         try {
             const client = this.client;
             const { data, error } = await client
@@ -59,7 +59,7 @@ export class ChatRepository extends BaseRepository<ChatSession> {
         }
     }
 
-    async inactivateUserSessions(userId: string): Promise<boolean> {
+    async inactivateUserSessions(userId: number): Promise<boolean> {
         try {
             const client = this.client;
             const { error } = await client
@@ -83,7 +83,7 @@ export class ChatRepository extends BaseRepository<ChatSession> {
         }
     }
 
-    async findActiveSession(userId: string, assistantId: string): Promise<ChatSession | null> {
+    async findActiveSession(userId: number, assistantId: string): Promise<ChatSession | null> {
         try {
             const client = this.client;
             const { data, error } = await client
@@ -110,13 +110,15 @@ export class ChatRepository extends BaseRepository<ChatSession> {
     }
 
     async createChat(sessionData: {
-        user_id: string;
+        user_id: number;
         prefecture_id: string;
         assistant_id: string;
     }): Promise<ChatSession | null> {
+        const userIdString = sessionData.user_id.toString();
         try {
             const data = {
                 ...sessionData,
+                user_id: userIdString,
                 is_active: true,
                 created_at: new Date().toISOString()
             };

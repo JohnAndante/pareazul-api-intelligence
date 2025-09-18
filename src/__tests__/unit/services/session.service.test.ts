@@ -195,7 +195,7 @@ describe('SessionService', () => {
     describe('findActiveSession', () => {
         it('should return session when found', async () => {
             // Arrange
-            const userId = 'user123';
+            const userId = 123;
             const assistantId = 'assistant123';
             const mockSession = {
                 id: 'session123',
@@ -218,7 +218,7 @@ describe('SessionService', () => {
 
         it('should return null when session not found', async () => {
             // Arrange
-            const userId = 'user123';
+            const userId = 123;
             const assistantId = 'assistant123';
 
             mockChatRepository.findActiveSession.mockResolvedValue(null);
@@ -232,7 +232,7 @@ describe('SessionService', () => {
 
         it('should handle repository errors gracefully', async () => {
             // Arrange
-            const userId = 'user123';
+            const userId = 123;
             const assistantId = 'assistant123';
 
             mockChatRepository.findActiveSession.mockRejectedValue(new Error('Database error'));
@@ -248,7 +248,7 @@ describe('SessionService', () => {
     describe('inactivateOldSessions', () => {
         it('should inactivate old sessions successfully', async () => {
             // Arrange
-            const userId = 'user123';
+            const userId = 123;
 
             mockChatRepository.inactivateUserSessions.mockResolvedValue(true);
 
@@ -261,7 +261,7 @@ describe('SessionService', () => {
 
         it('should handle repository errors gracefully', async () => {
             // Arrange
-            const userId = 'user123';
+            const userId = 123;
 
             mockChatRepository.inactivateUserSessions.mockRejectedValue(new Error('Database error'));
 
@@ -276,7 +276,7 @@ describe('SessionService', () => {
     describe('getSessionById', () => {
         it('should return session when found', async () => {
             // Arrange
-            const sessionId = 'session123';
+            const sessionId = 123;
             const mockSession = {
                 id: sessionId,
                 user_id: 'user123',
@@ -298,7 +298,7 @@ describe('SessionService', () => {
 
         it('should return null when session not found', async () => {
             // Arrange
-            const sessionId = 'session123';
+            const sessionId = 123;
 
             mockChatRepository.findById.mockResolvedValue(null);
 
@@ -311,7 +311,7 @@ describe('SessionService', () => {
 
         it('should handle repository errors gracefully', async () => {
             // Arrange
-            const sessionId = 'session123';
+            const sessionId = 123;
 
             mockChatRepository.findById.mockRejectedValue(new Error('Database error'));
 
