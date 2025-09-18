@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Schemas compartilhados para evitar repetição de validações
- * Padrões comuns usados em múltiplos validators
+ * Padrões comuns usados em múltiplos schemas
  */
 
 /**

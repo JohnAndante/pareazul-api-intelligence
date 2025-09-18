@@ -141,7 +141,7 @@ bun run pre-commit   # Script de pré-commit (format + check)
 
 - **Rate Limiting**: Redis-based com limites configuráveis
 - **Authentication**: HeaderAuth compatível com n8n
-- **Input Validation**: Schemas Zod em todos os endpoints
+- **Input Validation**: Validators Zod em todos os endpoints
 - **Attack Detection**: SQL injection, XSS, path traversal
 - **Security Headers**: Helmet.js + headers customizados
 
@@ -163,45 +163,6 @@ bun run pre-commit   # Script de pré-commit (format + check)
 - **Validation**: Zod
 - **Logging**: Winston
 - **Linting**: ESLint + Prettier
-
-## 📈 Status do Projeto
-
-### ✅ Completo
-
-- [x] Infraestrutura base (configurações, utils, middleware)
-- [x] Calculator Agent funcional
-- [x] Chat Agent principal com tools programáticas
-- [x] Sistema de memória híbrido (Redis + Supabase)
-- [x] Gerenciamento de sessões
-- [x] Sistema de webhooks (replicando fluxo n8n)
-- [x] Repositórios para banco de dados
-- [x] Sistema de logging e monitoramento
-- [x] Linting e formatação automática
-- [x] Repositório Git configurado
-
-### 🚧 Em Desenvolvimento
-
-- [ ] Transcription Agent
-- [ ] External API integrations (Pareazul)
-- [ ] Sistema de notificações
-
-### 📋 Roadmap
-
-- [ ] Testes automatizados (unit + integration)
-- [ ] Docker containerization
-- [ ] CI/CD pipeline
-- [ ] Production deployment
-- [ ] API documentation (OpenAPI)
-- [ ] Performance optimization
-
-## 🤝 Contribuição
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Execute `bun run pre-commit` antes de fazer commit
-4. Commit suas mudanças (`git commit -m 'Add nova feature'`)
-5. Push para a branch (`git push origin feature/nova-feature`)
-6. Abra um Pull Request
 
 ## 📄 Licença
 

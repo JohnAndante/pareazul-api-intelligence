@@ -3,7 +3,7 @@ import { memoryService } from '../services/memory.service';
 import { chatRepository } from '../repositories/chat.repository';
 import { messageRepository } from '../repositories/message.repository';
 import { logger } from '../utils/logger.util';
-import { GetMessageHistorySchema, GetSessionStatusSchema, GetUserInfoSchema } from '../validators/database.validator';
+import { GetMessageHistorySchema, GetSessionStatusSchema, GetUserInfoSchema } from '../schemas/database.schema';
 
 
 // Tool para buscar informações do usuário

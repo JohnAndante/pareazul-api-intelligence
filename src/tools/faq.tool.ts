@@ -1,12 +1,12 @@
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { searchVectors } from "../utils/vector-search.util";
 import { logger } from "../utils/logger.util";
-import { FaqSearchValidator, type FaqSearchInput } from "../validators/faq.validator";
+import { FaqSearchSchema, type FaqSearchInput } from "../schemas/faq.schema";
 
 export const faqSearchTool = new DynamicStructuredTool({
     name: "faq_search",
     description: "Search for frequently asked questions and answers in the knowledge base using vector similarity",
-    schema: FaqSearchValidator,
+    schema: FaqSearchSchema,
     func: async ({ query }: FaqSearchInput) => {
         try {
             logger.info(`[FaqTool] Searching FAQ for: "${query}"`);

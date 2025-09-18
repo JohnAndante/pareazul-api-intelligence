@@ -1,16 +1,16 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { activationService } from '../services/activation.service';
 import {
-    ChechVehicleActivationValidator,
-    RegisterVehicleActivationValidator,
+    CheckVehicleActivationSchema,
+    RegisterVehicleActivationSchema,
     CheckVehicleActivationInput,
     RegisterVehicleActivationInput
-} from '../validators/activation.validator';
+} from '../schemas/activation.schema';
 
 export const checkVehicleCurrentActivationsTool = new DynamicStructuredTool({
     name: 'checkVehicleCurrentActivations',
     description: 'Verify if a vehicle is activated in the current prefecture.',
-    schema: ChechVehicleActivationValidator,
+    schema: CheckVehicleActivationSchema,
     func: async (input: CheckVehicleActivationInput) => {
         const result = await activationService.checkCurrentVehicleActivation(input);
         return result.text;
@@ -33,7 +33,7 @@ export const registerVehicleActivationTool = new DynamicStructuredTool({
         'If the maximum activation time is reached, return a message to the user informing them that the maximum activation time has been reached. ' +
         'If the maximum activation time will be reached with the new activation, return a message to the user informing them that the maximum activation time will be reached with the new activation. ' +
         'Only call this tool after user confirms their choice from the presented options.',
-    schema: RegisterVehicleActivationValidator,
+    schema: RegisterVehicleActivationSchema,
     func: async (input: RegisterVehicleActivationInput) => {
         const result = await activationService.handleRegisterVehicleActivation(input);
         return result.text;

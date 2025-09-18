@@ -3,9 +3,9 @@ import { vehicleService } from '../services/vehicle.service';
 import {
     GetUserVehiclesInput,
     RegisterUserVehicleInput,
-    GetUserVehiclesValidator,
-    RegisterUserVehicleValidator
-} from '../validators/vehicle.validator';
+    GetUserVehiclesSchema,
+    RegisterUserVehicleSchema
+} from '../schemas/vehicle.schema';
 import { vehicleTypes } from '../utils/vehicle.utils';
 
 export const getUserVehiclesTool = new DynamicStructuredTool({
@@ -15,7 +15,7 @@ export const getUserVehiclesTool = new DynamicStructuredTool({
         'The plate must be a valid plate number, like \'ABC1234\', \'ABC1D23\', etc. (The plate can be partial, like \'ABC123\', \'ABC1D2\', etc.) ' +
         'The model must be a valid model, like \'Gol\', \'Fusca\', etc. ' +
         'If no plate or model is provided, all vehicles of the user will be returned.',
-    schema: GetUserVehiclesValidator,
+    schema: GetUserVehiclesSchema,
     func: async (input: GetUserVehiclesInput) => {
         const result = await vehicleService.getUserVehicles(input);
         return result.text;
@@ -29,7 +29,7 @@ export const registerUserVehicleTool = new DynamicStructuredTool({
         'For the type, you can retrieve the available vehicle types ' +
         'using the \'getVehicleTypes\' tool, but currently the accepted types are: ' +
         Object.values(vehicleTypes).map(type => `- ${type}`).join('\n'),
-    schema: RegisterUserVehicleValidator,
+    schema: RegisterUserVehicleSchema,
     func: async (input: RegisterUserVehicleInput) => {
         const result = await vehicleService.registerUserVehicle(input);
         return result.text;

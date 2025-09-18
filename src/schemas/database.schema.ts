@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
     userIdValidator,
-} from './shared.validator';
+} from './shared.schema';
 
 export const GetUserInfoSchema = z.object({
     userId: userIdValidator

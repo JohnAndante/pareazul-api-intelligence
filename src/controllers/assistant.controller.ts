@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { processAssistantMessage, processWebhookRequest } from '../agents/assistant';
 import { logger } from '../utils/logger.util';
 
-export class AssistantController {
+class AssistantController {
     /**
      * Endpoint para processar mensagem de chat
      */

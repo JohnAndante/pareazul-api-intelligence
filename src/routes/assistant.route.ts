@@ -2,18 +2,22 @@ import { Router } from 'express';
 import { assistantController } from '../controllers/assistant.controller';
 import { webserviceAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validation.middleware';
-import { WebhookRequestSchema } from '../agents/assistant/schemas';
+import { AssistantRouteValidator } from '../validators/assistant.validator';
 
 const router = Router();
 
 // Health check
-router.get('/health', assistantController.health.bind(assistantController));
+router.get(
+    '/health',
+    webserviceAuth,
+    assistantController.health.bind(assistantController)
+);
 
 // Webhook endpoint (replicando fluxo n8n) - Usa Bearer token do webservice
 router.post(
     '/webhook',
     webserviceAuth,
-    validate({ body: WebhookRequestSchema }),
+    validate(AssistantRouteValidator.postWebhook()),
     assistantController.webhook.bind(assistantController)
 );
 
@@ -21,6 +25,7 @@ router.post(
 router.post(
     '/message',
     webserviceAuth,
+    validate(AssistantRouteValidator.postMessage()),
     assistantController.processMessage.bind(assistantController)
 );
 

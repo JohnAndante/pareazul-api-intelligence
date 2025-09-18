@@ -1,5 +1,5 @@
 {
-  "name": "pareazul-assistant-server",
+  "name": "pareazul-api-intelligence",
   "module": "index.ts",
   "type": "module",
   "private": true,

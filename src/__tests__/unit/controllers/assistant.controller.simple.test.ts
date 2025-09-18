@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { AssistantController } from '../../../controllers/assistant.controller';
+import { assistantController } from '../../../controllers/assistant.controller';
 
 // Mock das dependências
 jest.mock('../../../agents/assistant', () => ({
@@ -15,12 +15,11 @@ jest.mock('../../../utils/logger.util', () => ({
 }));
 
 describe('AssistantController - Simple Tests', () => {
-    let controller: AssistantController;
+    let controller = assistantController;
     let mockReq: Partial<Request>;
     let mockRes: Partial<Response>;
 
     beforeEach(() => {
-        controller = new AssistantController();
         mockReq = {
             body: {},
         };

@@ -2,9 +2,9 @@ import { z } from 'zod';
 import {
     userIdValidator,
     vehiclePlateValidator
-} from './shared.validator';
+} from './shared.schema';
 
-export const GetUserVehiclesValidator = z.object({
+export const GetUserVehiclesSchema = z.object({
     userId: userIdValidator,
 
     plate: vehiclePlateValidator
@@ -19,7 +19,7 @@ export const GetUserVehiclesValidator = z.object({
         .describe('The model of the vehicle (optional filter)'),
 });
 
-export const RegisterUserVehicleValidator = z.object({
+export const RegisterUserVehicleSchema = z.object({
     userId: userIdValidator,
     vehicle: z.object({
         plate: vehiclePlateValidator,
@@ -36,5 +36,5 @@ export const RegisterUserVehicleValidator = z.object({
     })
 });
 
-export type GetUserVehiclesInput = z.infer<typeof GetUserVehiclesValidator>;
-export type RegisterUserVehicleInput = z.infer<typeof RegisterUserVehicleValidator>;
+export type GetUserVehiclesInput = z.infer<typeof GetUserVehiclesSchema>;
+export type RegisterUserVehicleInput = z.infer<typeof RegisterUserVehicleSchema>;

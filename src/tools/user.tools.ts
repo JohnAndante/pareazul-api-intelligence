@@ -1,14 +1,14 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { userService } from '../services/user.service';
 import {
-    GetUserBalanceValidator,
+    GetUserBalanceSchema,
     GetUserBalanceInput
-} from '../validators/user.validator';
+} from '../schemas/user.schema';
 
 export const getUserBalanceTool = new DynamicStructuredTool({
     name: 'getUserBalance',
     description: 'Retrieves the balance of a user on a prefecture by their session.',
-    schema: GetUserBalanceValidator,
+    schema: GetUserBalanceSchema,
     func: async (input: GetUserBalanceInput) => {
         const result = await userService.getUserBalance(input);
         return result.text;

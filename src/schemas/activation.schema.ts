@@ -2,17 +2,16 @@ import { z } from 'zod';
 import {
     userIdValidator,
     vehiclePlateValidator,
-} from './shared.validator';
+} from './shared.schema';
 
-export const ChechVehicleActivationValidator = z.object({
+export const CheckVehicleActivationSchema = z.object({
     userId: userIdValidator,
     vehiclePlate: vehiclePlateValidator,
-
 });
 
-export type CheckVehicleActivationInput = z.infer<typeof ChechVehicleActivationValidator>;
+export type CheckVehicleActivationInput = z.infer<typeof CheckVehicleActivationSchema>;
 
-export const RegisterVehicleActivationValidator = z.object({
+export const RegisterVehicleActivationSchema = z.object({
     userId: userIdValidator,
     vehiclePlate: vehiclePlateValidator,
 
@@ -34,4 +33,4 @@ export const RegisterVehicleActivationValidator = z.object({
         .describe('Whether this is an extension of a previous activation'),
 });
 
-export type RegisterVehicleActivationInput = z.infer<typeof RegisterVehicleActivationValidator>;
+export type RegisterVehicleActivationInput = z.infer<typeof RegisterVehicleActivationSchema>;

@@ -20,22 +20,15 @@ import {
 import moment from 'moment';
 
 export class TokenTrackingService {
-    private static instance: TokenTrackingService;
-
-    public static getInstance(): TokenTrackingService {
-        if (!TokenTrackingService.instance) {
-            TokenTrackingService.instance = new TokenTrackingService();
-        }
-        return TokenTrackingService.instance;
-    }
+    private readonly logger = logger.child({ service: 'TokenTrackingService' });
 
     /**
      * Calcula o custo estimado baseado no modelo e tokens usados
      */
-    public calculateEstimatedCost(usage: TokenUsage, model: string): number {
+    calculateEstimatedCost(usage: TokenUsage, model: string): number {
         const pricing = OPENAI_PRICING[model];
         if (!pricing) {
-            logger.warn(`Pricing not found for model: ${model}`);
+            this.logger.warn(`Pricing not found for model: ${model}`);
             return 0;
         }
 
@@ -48,7 +41,7 @@ export class TokenTrackingService {
     /**
      * Registra o uso de tokens para uma mensagem específica
      */
-    public async trackMessageUsage(data: {
+    async trackMessageUsage(data: {
         messageId: string;
         sessionId: string;
         userId: string;
@@ -87,14 +80,14 @@ export class TokenTrackingService {
             // Atualizar métricas diárias no Redis
             await this.updateDailyMetrics(messageUsage);
 
-            logger.info(`Token usage tracked for message ${data.messageId}`, {
+            this.logger.info(`Token usage tracked for message ${data.messageId}`, {
                 tokens: data.usage.total_tokens,
                 cost: estimatedCost,
                 model: data.modelUsed
             });
 
         } catch (error) {
-            logger.error('Error tracking message usage:', error);
+            this.logger.error('Error tracking message usage:', error);
             throw error;
         }
     }
@@ -126,7 +119,7 @@ export class TokenTrackingService {
             }]);
 
         if (error) {
-            logger.error('Error saving message token usage:', error);
+            this.logger.error('Error saving message token usage:', error);
             throw error;
         }
     }
@@ -171,7 +164,7 @@ export class TokenTrackingService {
             await redis.setEx(cacheKey, 86400, JSON.stringify(sessionSummary));
 
         } catch (error) {
-            logger.error('Error updating session cache:', error);
+            this.logger.error('Error updating session cache:', error);
             // Não propaga o erro para não quebrar o fluxo principal
         }
     }
@@ -213,14 +206,14 @@ export class TokenTrackingService {
             await redis.setEx(cacheKey, 172800, JSON.stringify(dailyMetrics));
 
         } catch (error) {
-            logger.error('Error updating daily metrics:', error);
+            this.logger.error('Error updating daily metrics:', error);
         }
     }
 
     /**
      * Recupera o resumo de tokens de uma sessão
      */
-    public async getSessionSummary(sessionId: string): Promise<SessionTokenSummary | null> {
+    async getSessionSummary(sessionId: string): Promise<SessionTokenSummary | null> {
         try {
             // Tenta primeiro do cache Redis
             const cacheKey = `token_session:${sessionId}`;
@@ -232,7 +225,7 @@ export class TokenTrackingService {
 
             // Se não estiver no cache, busca no banco e reconstrói
             if (!supabaseAdmin) {
-                logger.error('Supabase admin client not initialized');
+                this.logger.error('Supabase admin client not initialized');
                 return null;
             }
 
@@ -243,7 +236,7 @@ export class TokenTrackingService {
                 .order('timestamp', { ascending: true });
 
             if (error) {
-                logger.error('Error fetching session summary:', error);
+                this.logger.error('Error fetching session summary:', error);
                 return null;
             }
 
@@ -275,7 +268,7 @@ export class TokenTrackingService {
             return summary;
 
         } catch (error) {
-            logger.error('Error getting session summary:', error);
+            this.logger.error('Error getting session summary:', error);
             return null;
         }
     }
@@ -283,10 +276,10 @@ export class TokenTrackingService {
     /**
      * Recupera métricas de uso por usuário
      */
-    public async getUserUsageMetrics(userId: string, days: number = 30): Promise<Record<string, unknown> | null> {
+    async getUserUsageMetrics(userId: string, days: number = 30): Promise<Record<string, unknown> | null> {
         try {
             if (!supabaseAdmin) {
-                logger.error('Supabase admin client not initialized');
+                this.logger.error('Supabase admin client not initialized');
                 return null;
             }
 
@@ -300,7 +293,7 @@ export class TokenTrackingService {
                 .order('timestamp', { ascending: false });
 
             if (error) {
-                logger.error('Error fetching user usage metrics:', error);
+                this.logger.error('Error fetching user usage metrics:', error);
                 return null;
             }
 
@@ -328,7 +321,7 @@ export class TokenTrackingService {
             };
 
         } catch (error) {
-            logger.error('Error getting user usage metrics:', error);
+            this.logger.error('Error getting user usage metrics:', error);
             return null;
         }
     }
@@ -364,7 +357,7 @@ export class TokenTrackingService {
     /**
      * Limpa dados antigos de tracking (manutenção)
      */
-    public async cleanupOldData(daysToKeep: number = 90): Promise<void> {
+    async cleanupOldData(daysToKeep: number = 90): Promise<void> {
         try {
             if (!supabaseAdmin) {
                 throw new Error('Supabase admin client not initialized');
@@ -378,17 +371,17 @@ export class TokenTrackingService {
                 .lt('timestamp', cutoffDate);
 
             if (error) {
-                logger.error('Error cleaning up old token data:', error);
+                this.logger.error('Error cleaning up old token data:', error);
                 throw error;
             }
 
-            logger.info(`Token usage data older than ${daysToKeep} days cleaned up`);
+            this.logger.info(`Token usage data older than ${daysToKeep} days cleaned up`);
 
         } catch (error) {
-            logger.error('Error during token data cleanup:', error);
+            this.logger.error('Error during token data cleanup:', error);
             throw error;
         }
     }
 }
 
-export const tokenTrackingService = TokenTrackingService.getInstance();
+export const tokenTrackingService = new TokenTrackingService();

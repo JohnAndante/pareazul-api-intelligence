@@ -1,22 +1,17 @@
 import { Router } from 'express';
+import healthRouter from './health.route';
 import assistantRoutes from './assistant.route';
-import { tokenMetricsRouter } from './token-metrics.route';
+import metricsRouter from './metrics.route';
 
 const router = Router();
 
 // Health check route
-router.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'pareazul-assistant-server',
-  });
-});
+router.get('/health', healthRouter);
 
 // Chat routes
 router.use('/assistant', assistantRoutes);
 
-// Token metrics routes
-router.use('/metrics', tokenMetricsRouter);
+// Metrics routes
+router.use('/metrics', metricsRouter);
 
 export default router;
