@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import assistantRoutes from './assistant.route';
+import { tokenMetricsRouter } from './token-metrics.route';
 
 const router = Router();
 
@@ -14,5 +15,8 @@ router.get('/health', (req, res) => {
 
 // Chat routes
 router.use('/assistant', assistantRoutes);
+
+// Token metrics routes
+router.use('/metrics', tokenMetricsRouter);
 
 export default router;

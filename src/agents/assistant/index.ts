@@ -2,6 +2,7 @@ import { invokeAssistantAgent } from "./agent";
 import { AssistantQuerySchema, WebhookRequestSchema, AgentContext } from "./schemas";
 import { memoryService } from "../../services/memory.service";
 import { sessionService } from "../../services/session.service";
+import { tokenTrackingService } from "../../services/token-tracking.service";
 import { logger } from "../../utils/logger.util";
 import { ChatPayload } from "../../types/chat.types";
 
@@ -65,14 +66,43 @@ export async function processAssistantMessage(
         }
 
         // Invoca o agente, passando a mensagem e o contexto
-        const agentResponse = await invokeAssistantAgent(message, context);
+        const agentResult = await invokeAssistantAgent(message, context);
+
 
         // Registra resposta do agente, salvando na memória
         const assistantMessage = await memoryService.addMessage(
             session.id,
             'assistant',
-            agentResponse
+            agentResult.output
         );
+
+        // Tracking de tokens se houver dados de uso
+        if (agentResult.tokenUsage && assistantMessage?.id) {
+            try {
+                await tokenTrackingService.trackMessageUsage({
+                    messageId: assistantMessage.id,
+                    sessionId: session.id,
+                    userId: validatedInput.payload.usuario_id,
+                    prefectureId: validatedInput.payload.prefeitura_id,
+                    agentType: 'ASSISTENTE',
+                    usage: {
+                        prompt_tokens: ((agentResult.tokenUsage as Record<string, unknown>)?.tokenUsage as Record<string, unknown>)?.promptTokens as number || 0,
+                        completion_tokens: ((agentResult.tokenUsage as Record<string, unknown>)?.tokenUsage as Record<string, unknown>)?.completionTokens as number || 0,
+                        total_tokens: ((agentResult.tokenUsage as Record<string, unknown>)?.tokenUsage as Record<string, unknown>)?.totalTokens as number || 0
+                    },
+                    modelUsed: agentResult.tokenUsage.model as string || 'gpt-4o-mini',
+                    processingTimeMs: agentResult.processingTime
+                });
+
+                logger.info(`[TokenTracking] Usage tracked for message ${assistantMessage.id}`, {
+                    tokens: agentResult.tokenUsage.total_tokens,
+                    processingTime: agentResult.processingTime
+                });
+            } catch (error) {
+                logger.error('[TokenTracking] Failed to track token usage:', error);
+                // Não propaga o erro para não quebrar o fluxo principal
+            }
+        }
 
         if (!assistantMessage) {
             logger.warn('Failed to save assistant message, but continuing');
@@ -81,7 +111,7 @@ export async function processAssistantMessage(
         logger.info(`[AssistantAgent] Message processed successfully`);
 
         return {
-            message: agentResponse,
+            message: agentResult.output,
             message_date: new Date().toISOString(),
             assistant_id: finalAssistantId,
             message_id: assistantMessage?.id,

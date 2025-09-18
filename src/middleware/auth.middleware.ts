@@ -172,7 +172,7 @@ export const webserviceAuth = (req: AuthenticatedRequest, res: Response, next: N
       });
 
       return res.status(401).json({
-        error: 'Invalid Bearer token',
+        error: 'Denied access for this request',
         code: 'INVALID_BEARER_TOKEN',
       });
     }

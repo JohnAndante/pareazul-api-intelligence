@@ -10,12 +10,17 @@ import { AgentContext } from "./schemas";
 import { logger } from "../../utils/logger.util";
 import { memoryService } from "../../services/memory.service";
 
-// Configuração do LLM
+// Configuração do LLM com callback para capturar token usage
 const llm = new ChatOpenAI({
     modelName: "gpt-4o-mini",
     temperature: 0.3,
     topP: 0.9,
     openAIApiKey: process.env.OPENAI_API_KEY,
+    callbacks: [{
+        handleLLMEnd: (output: { llmOutput?: Record<string, unknown> }) => {
+            (global as Record<string, unknown>).__lastTokenUsage = output.llmOutput;
+        }
+    }]
 });
 
 // Template de prompt dinâmico com memória conversacional
@@ -95,7 +100,7 @@ export const createAssistantAgent = async (payload: Record<string, unknown>, ses
         const agentExecutor = new AgentExecutor({
             agent,
             tools,
-            verbose: process.env.NODE_ENV === 'development',
+            // verbose: process.env.NODE_ENV === 'development',
             returnIntermediateSteps: process.env.NODE_ENV === 'development',
             maxIterations: 24,
             earlyStoppingMethod: 'generate',
@@ -151,10 +156,17 @@ async function createBasicAgent(payload: Record<string, unknown>) {
     return new AgentExecutor({
         agent,
         tools,
-        verbose: process.env.NODE_ENV === 'development',
+        // verbose: process.env.NODE_ENV === 'development',
         returnIntermediateSteps: process.env.NODE_ENV === 'development',
         maxIterations: 12,
         handleParsingErrors: true,
+        // Força retorno de callbacks para capturar token usage
+        callbacks: [{
+            handleLLMEnd: (output: { llmOutput?: Record<string, unknown> }) => {
+                // Armazena token usage no contexto global temporariamente
+                (global as Record<string, unknown>).__lastTokenUsage = output.llmOutput?.tokenUsage;
+            }
+        }]
     });
 }
 
@@ -246,21 +258,24 @@ export function getAgentCacheStats(): {
 export const invokeAssistantAgent = async (
     input: string,
     context: AgentContext
-): Promise<string> => {
-    try {
-        logger.info(`[AssistantAgent] Invoking with input: "${input}"`);
-        logger.debug(`[AssistantAgent] Context:`, context);
+): Promise<{ output: string; tokenUsage?: Record<string, unknown>; processingTime: number }> => {
+    const startTime = Date.now();
 
-        // Cria o agente com o payload do contexto
+    logger.info(`[AssistantAgent] Invoking with input: "${input}"`);
+    logger.debug(`[AssistantAgent] Context:`, context);
+
+    try {
         const agentExecutor = await createAssistantAgent(context.payload, context.sessionId);
+
+        const agentInput = {
+            input: input,
+            currentDate: new Date().toISOString(),
+            context: JSON.stringify(context),
+        };
 
         // Invoca o agente (com ou sem memória dependendo do tipo)
         const result = await agentExecutor.invoke(
-            {
-                input: input,
-                currentDate: new Date().toISOString(),
-                context: JSON.stringify(context),
-            },
+            agentInput,
             context.sessionId ? {
                 configurable: {
                     sessionId: context.sessionId
@@ -268,21 +283,41 @@ export const invokeAssistantAgent = async (
             } : undefined
         );
 
-        logger.info(`[AssistantAgent] Response generated successfully`);
-        return result.output;
+        const processingTime = Date.now() - startTime;
+
+        logger.info(`[AssistantAgent] Response generated successfully in ${processingTime}ms`);
+
+        // Captura token usage do callback global
+        const tokenUsage = (global as Record<string, unknown>).__lastTokenUsage;
+
+        // Limpa o contexto global
+        delete (global as Record<string, unknown>).__lastTokenUsage;
+
+        return {
+            output: result.output,
+            tokenUsage: tokenUsage as Record<string, unknown> | undefined,
+            processingTime
+        };
+
     } catch (error) {
+        const processingTime = Date.now() - startTime;
         logger.error("[AssistantAgent] Error invoking agent:", error);
 
         // Fallback para erros
+        let fallbackMessage = "Desculpe, houve um erro interno e não consegui completar sua solicitação. Por favor, tente novamente.";
+
         if (error instanceof Error) {
             if (error.message.includes('timeout')) {
-                return "Desculpe, houve um timeout ao processar sua solicitação. Tente novamente.";
+                fallbackMessage = "Desculpe, houve um timeout ao processar sua solicitação. Tente novamente.";
             }
             if (error.message.includes('rate limit')) {
-                return "Desculpe, estou com muitas solicitações no momento. Tente novamente em alguns instantes.";
+                fallbackMessage = "Desculpe, estou com muitas solicitações no momento. Tente novamente em alguns instantes.";
             }
         }
 
-        return "Desculpe, houve um erro interno e não consegui completar sua solicitação. Por favor, tente novamente.";
+        return {
+            output: fallbackMessage,
+            processingTime
+        };
     }
 };
