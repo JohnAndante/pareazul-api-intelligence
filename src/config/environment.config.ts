@@ -7,7 +7,7 @@ const envSchema = z.object({
 
   // Pareazul API
   PAREAZUL_API_WEBSERVICE: z.string().url(),
-  PAREAZUL_API_BACKEND: z.string().url(),
+  PAREAZUL_API_BACKEND: z.string().url().optional(),
 
   // Database
   SUPABASE_URL: z.string().url(),
@@ -24,18 +24,15 @@ const envSchema = z.object({
 
   // Security
   CORS_ORIGINS: z.string().optional(),
+  API_BEARER_TOKEN: z.string(),
 
-  // Auth
-  API_SECRET_KEY: z.string(),
-
-  // File upload
+  // File Upload
   MAX_FILE_SIZE: z.string().transform(Number).default(10 * 1024 * 1024),
   UPLOAD_DIR: z.string().default('uploads'),
   TEMP_DIR: z.string().default('temp'),
 
   // Audio processing
-  AUDIO_MAX_DURATION: z.string().transform(Number).default(5 * 60), // 5 minutes
-  AUDIO_ALLOWED_FORMATS: z.array(z.string()).default(['mp3', 'wav', 'm4a', 'ogg', 'flac']),
+  AUDIO_MAX_DURATION: z.string().transform(Number).default(5 * 60),
 
   // Session management
   SESSION_TTL: z.string().transform(Number).default(6 * 60), // 60 minutes

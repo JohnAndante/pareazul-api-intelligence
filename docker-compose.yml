@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # Serviço principal da API
+  pareazul-api-intelligence:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pareazul-api-intelligence
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      # Server
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+
+      # Pareazul API
+      PAREAZUL_API_WEBSERVICE: ${PAREAZUL_API_WEBSERVICE}
+      PAREAZUL_API_BACKEND: ${PAREAZUL_API_BACKEND}
+
+      # Database
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # Security & Auth
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      API_BEARER_TOKEN: ${API_BEARER_TOKEN}
+
+      # File upload
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-10485760}
+      UPLOAD_DIR: ${UPLOAD_DIR:-uploads}
+      TEMP_DIR: ${TEMP_DIR:-temp}
+
+      # Audio processing
+      AUDIO_MAX_DURATION: ${AUDIO_MAX_DURATION:-300}
+
+      # Session management
+      SESSION_TTL: ${SESSION_TTL:-21600}
+      MEMORY_BUFFER_SIZE: ${MEMORY_BUFFER_SIZE:-20}
+      VECTOR_DIMENSIONS: ${VECTOR_DIMENSIONS:-1536}
+
+      # External services
+      OPENAI_HEALTH_URL: ${OPENAI_HEALTH_URL:-https://status.openai.com/api/v2/summary.json}
+    volumes:
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./uploads:/app/uploads
+    depends_on:
+      - redis
+    networks:
+      - pareazul-network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis para cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: pareazul-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass $$REDIS_PASSWORD --appendonly yes
+        else
+          redis-server --appendonly yes
+        fi
+      "
+    volumes:
+      - redis_data:/data
+    networks:
+      - pareazul-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Commander (opcional, para desenvolvimento)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: pareazul-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+    ports:
+      - '${REDIS_COMMANDER_PORT:-8081}:8081'
+    depends_on:
+      - redis
+    networks:
+      - pareazul-network
+    profiles:
+      - dev # Só sobe no profile de desenvolvimento
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  pareazul-network:
+    driver: bridge
