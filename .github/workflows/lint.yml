@@ -1,0 +1,71 @@
+name: 🧹 Lint & Format Check
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  pull_request:
+    branches:
+      - main
+      - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: 🧹 Lint & Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 📚 Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🔍 Type check
+        run: bun run type-check
+
+      - name: 🧹 ESLint check
+        run: bun run lint
+
+      - name: 🎨 Prettier format check
+        run: |
+          echo "Checking code formatting..."
+          bun run format
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "❌ Code formatting issues found!"
+            echo "Run 'bun run format' to fix them"
+            exit 1
+          else
+            echo "✅ Code formatting is correct"
+          fi
+
+      - name: ✅ Lint passed
+        if: success()
+        run: |
+          echo "🎉 All lint checks passed!"
+          echo "✅ Code style is consistent"
+          echo "🔧 Type check: ✅"
+          echo "🧹 ESLint: ✅"
+          echo "🎨 Prettier: ✅"
+
+      - name: ❌ Lint failed
+        if: failure()
+        run: |
+          echo "🚫 Lint checks failed!"
+          echo "❌ Please fix code style issues"
+          echo "🔧 Run 'bun run check' locally to fix"
+          echo "🎨 Run 'bun run format' to auto-fix formatting"
+          exit 1
