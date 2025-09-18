@@ -36,7 +36,7 @@ export const validate = (config: ValidationConfig) => {
         if (!queryResult.success) {
           errors.push(...queryResult.errors.map(err => `query.${err}`));
         } else {
-          req.query = queryResult.data as any;
+          (req as unknown as Record<string, unknown>).validatedQuery = queryResult.data;
         }
       }
 
@@ -46,7 +46,7 @@ export const validate = (config: ValidationConfig) => {
         if (!paramsResult.success) {
           errors.push(...paramsResult.errors.map(err => `params.${err}`));
         } else {
-          req.params = paramsResult.data as any;
+          (req as unknown as Record<string, unknown>).validatedParams = paramsResult.data;
         }
       }
 
@@ -96,7 +96,7 @@ export const sanitize = (req: Request, res: Response, next: NextFunction) => {
 
     // Sanitizar query strings
     if (req.query && typeof req.query === 'object') {
-      req.query = sanitizeObject(req.query);
+      req.query = sanitizeObject(req.query) as typeof req.query;
     }
 
     next();
@@ -109,7 +109,7 @@ export const sanitize = (req: Request, res: Response, next: NextFunction) => {
 /**
  * Função auxiliar para sanitizar objetos recursivamente
  */
-function sanitizeObject(obj: any): any {
+function sanitizeObject(obj: unknown): unknown {
   if (typeof obj === 'string') {
     return ValidationUtil.sanitizeText(obj);
   }
@@ -119,7 +119,7 @@ function sanitizeObject(obj: any): any {
   }
 
   if (obj && typeof obj === 'object') {
-    const sanitized: any = {};
+    const sanitized: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       sanitized[key] = sanitizeObject(value);
     }

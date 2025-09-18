@@ -109,10 +109,12 @@ Rules:
 ## Dates and Times
 
 - Always use current date {currentDate} for operations.
+- **Current local time in the prefecture**: {prefectureLocalTime}
 - **Never invent or adjust dates/times.** Use exactly what the tools or payload return.
 - Format for user:
   - 'dd/MM/yyyy' or 'dd/MM/yyyy HH:mm'
   - Internal: 'yyyy-MM-dd HH:mm:ss'
+- **Always reference the current local time** when discussing activations, expirations, or time-sensitive operations.
 
 ---
 
@@ -282,7 +284,15 @@ export const createPromptTemplate = (payload: Record<string, unknown>, currentDa
   // Converte payload para Markdown para evitar conflitos com variáveis de template
   const userPayload = payloadToMarkdown(payload);
 
+  // Extrai o timezone da prefeitura do payload
+  const prefectureTimezone = (payload as any)?.prefeitura_timezone || 'America/Sao_Paulo';
+
+  // Cria o horário local da prefeitura usando moment
+  const moment = require('moment-timezone');
+  const prefectureLocalTime = moment().tz(prefectureTimezone).format('DD/MM/YYYY HH:mm');
+
   return SYSTEM_PROMPT
     .replace('{currentDate}', currentDate)
+    .replace('{prefectureLocalTime}', prefectureLocalTime)
     .replace('{userPayload}', userPayload);
 };
